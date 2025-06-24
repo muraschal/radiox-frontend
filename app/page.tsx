@@ -1,80 +1,38 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Play, Pause, Volume2, Download, Radio, Zap, Clock, Mic, Settings, Database, Brain, Headphones, Users, MapPin } from 'lucide-react'
-
-// Supabase types
-interface ShowPreset {
-  id: string;
-  preset_name: string;
-  display_name: string;
-  description: string;
-  city_focus: string;
-  primary_speaker: string;
-  secondary_speaker?: string;
-  weather_speaker?: string;
-  gpt_selection_instructions: string;
-  rss_feed_filter: string;
-}
-
-interface BroadcastLog {
-  id: string;
-  show_title?: string;
-  show_description?: string;
-  script_content?: string;
-  news_data?: any;
-  show_style?: string;
-  audio_file_url?: string;
-  audio_duration_seconds?: number;
-  preset_name?: string;
-  timestamp: string;
-}
+import { Play, Pause, Volume2, Download, Radio, Zap, Clock, Mic, Settings, Database, Brain, Headphones, Users, MapPin, List, Loader } from 'lucide-react'
+import { useRadioXAPI, type Show, type ShowDetails, type GenerateShowRequest } from './hooks/useRadioXAPI'
 
 export default function HomePage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [currentShow, setCurrentShow] = useState<BroadcastLog | null>(null)
-  const [showPresets, setShowPresets] = useState<ShowPreset[]>([])
-  const [selectedPreset, setSelectedPreset] = useState<ShowPreset | null>(null)
-  const [audioFile, setAudioFile] = useState<string | null>(null)
   const [showDetails, setShowDetails] = useState(false)
+  const [selectedChannel, setSelectedChannel] = useState('zurich')
+  const [newsCount, setNewsCount] = useState(3)
+  const [primarySpeaker, setPrimarySpeaker] = useState('marcel')
+  const [secondarySpeaker, setSecondarySpeaker] = useState('jarvis')
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  // Load show presets on mount
-  useEffect(() => {
-    loadShowPresets()
-    loadLatestShow()
-  }, [])
+  // Use RadioX API Hook
+  const {
+    shows,
+    currentShow,
+    isGenerating,
+    isLoading,
+    error,
+    generateShow,
+    loadShow,
+    clearError,
+    formatDuration,
+    getChannels,
+    getSpeakers,
+  } = useRadioXAPI()
 
-  const loadShowPresets = async () => {
-    try {
-      const response = await fetch('/api/show-presets')
-      if (response.ok) {
-        const presets = await response.json()
-        setShowPresets(presets)
-        if (presets.length > 0) {
-          setSelectedPreset(presets[0]) // Default to first preset
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load presets:', error)
-    }
-  }
-
-  const loadLatestShow = async () => {
-    try {
-      const response = await fetch('/api/latest-show')
-      if (response.ok) {
-        const show = await response.json()
-        setCurrentShow(show)
-      }
-    } catch (error) {
-      console.error('Failed to load latest show:', error)
-    }
-  }
+  const channels = getChannels()
+  const speakers = getSpeakers()
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -87,63 +45,53 @@ export default function HomePage() {
     }
   }
 
-  const generateShow = async () => {
-    setIsGenerating(true)
+  const handleGenerateShow = async () => {
     try {
-      // Step 1: Generate show script
-      const showResponse = await fetch('/api/generate-show', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          preset: selectedPreset?.preset_name || 'zurich', 
-          duration_minutes: 3 
-        })
-      })
-      const showData = await showResponse.json()
-      console.log('Show generated:', showData)
-      setCurrentShow(showData)
-
-      if (showData.success && showData.script_content) {
-        // Step 2: Generate audio from script
-        const audioResponse = await fetch('/api/generate-audio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            script_content: showData.script_content,
-            session_id: showData.session_id,
-            voice_quality: 'high'
-          })
-        })
-        const audioData = await audioResponse.json()
-        console.log('Audio generated:', audioData)
-        
-        if (audioData.success && audioData.audio_filename) {
-          setAudioFile(audioData.audio_filename)
-          // Reload audio element with new file
-          if (audioRef.current) {
-            audioRef.current.load()
-          }
-        }
+      const request: GenerateShowRequest = {
+        channel: selectedChannel,
+        news_count: newsCount,
+        language: 'de',
+        primary_speaker: primarySpeaker,
+        secondary_speaker: secondarySpeaker,
       }
+      
+      await generateShow(request)
     } catch (error) {
-      console.error('Generation failed:', error)
-    } finally {
-      setIsGenerating(false)
+      console.error('Failed to generate show:', error)
     }
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  const handleLoadShow = async (show: Show) => {
+    try {
+      await loadShow(show.id)
+    } catch (error) {
+      console.error('Failed to load show:', error)
+    }
   }
+
+  // Auto-play when currentShow changes
+  useEffect(() => {
+    if (currentShow?.metadata?.audio_url && audioRef.current) {
+      audioRef.current.load()
+    }
+  }, [currentShow])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
       {/* MVP Banner */}
       <div className="fixed top-0 right-0 bg-red-500 text-white font-bold text-xs uppercase tracking-wider transform rotate-45 origin-center z-50 w-32 h-8 flex items-center justify-center mt-4 -mr-8">
-        MVP v5.0
+        MVP v5.1
       </div>
+
+      {/* Error Toast */}
+      {error && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-lg backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <span>{error}</span>
+            <button onClick={clearError} className="ml-2 text-red-200 hover:text-white">×</button>
+          </div>
+        </div>
+      )}
 
       {/* Header with Player Focus */}
       <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-xl border-b border-white/10">
@@ -174,23 +122,27 @@ export default function HomePage() {
               
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-white mb-1">
-                  {currentShow?.show_title || `${selectedPreset?.display_name || 'Aktuelle Show'}`}
+                  {currentShow?.broadcast_style || 'RadioX AI Radio'} - {currentShow?.metadata?.channel || 'Zürich'}
                 </h2>
                 <p className="text-gray-300 mb-2">
-                  {currentShow?.show_description || selectedPreset?.description || 'AI-generierte Radio Show'}
+                  {currentShow ? 
+                    `${currentShow.metadata.content_stats.news_selected} News • ${currentShow.estimated_duration_minutes} Min` : 
+                    'Wähle eine Show oder generiere eine neue'
+                  }
                 </p>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="flex items-center gap-1 text-blue-400">
                     <MapPin className="w-3 h-3" />
-                    {selectedPreset?.city_focus || 'Global'}
+                    {currentShow?.metadata?.channel || selectedChannel}
                   </span>
                   <span className="flex items-center gap-1 text-purple-400">
                     <Users className="w-3 h-3" />
-                    {selectedPreset?.primary_speaker}{selectedPreset?.secondary_speaker && ` & ${selectedPreset.secondary_speaker}`}
+                    {currentShow?.metadata?.speakers?.primary?.name || primarySpeaker}
+                    {currentShow?.metadata?.speakers?.secondary && ` & ${currentShow.metadata.speakers.secondary.name}`}
                   </span>
                   <span className="flex items-center gap-1 text-green-400">
                     <Clock className="w-3 h-3" />
-                    {duration ? formatTime(duration) : '3:00'} Min
+                    {currentShow?.metadata?.audio_duration ? formatDuration(currentShow.metadata.audio_duration) : '0:00'}
                   </span>
                 </div>
               </div>
@@ -198,7 +150,8 @@ export default function HomePage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={togglePlay}
-                  className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+                  disabled={!currentShow?.metadata?.audio_url}
+                  className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isPlaying ? (
                     <Pause className="w-8 h-8 text-white" />
@@ -215,9 +168,13 @@ export default function HomePage() {
               onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
               onEnded={() => setIsPlaying(false)}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
               className="hidden"
             >
-              {audioFile && <source src={`/api/audio/${audioFile}`} type="audio/mpeg" />}
+              {currentShow?.metadata?.audio_url && (
+                <source src={currentShow.metadata.audio_url} type="audio/mpeg" />
+              )}
             </audio>
 
             {/* Progress Bar */}
@@ -248,7 +205,7 @@ export default function HomePage() {
                   />
                 </div>
                 <div className="text-sm text-gray-400 font-mono">
-                  {formatTime(currentTime)} / {formatTime(duration)}
+                  {formatDuration(currentTime)} / {formatDuration(duration)}
                 </div>
               </div>
 
@@ -260,9 +217,16 @@ export default function HomePage() {
                 >
                   <Database className="w-4 h-4 text-gray-400" />
                 </button>
-                <button className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Download">
-                  <Download className="w-4 h-4 text-gray-400" />
-                </button>
+                {currentShow?.metadata?.audio_url && (
+                  <a 
+                    href={currentShow.metadata.audio_url} 
+                    download
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors" 
+                    title="Download"
+                  >
+                    <Download className="w-4 h-4 text-gray-400" />
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -279,16 +243,16 @@ export default function HomePage() {
                 <Brain className="w-6 h-6 text-blue-400" />
                 AI Show Generator
               </h3>
-              <p className="text-gray-300">Erstelle eine personalisierte Radio Show mit aktuellen News und KI-generierten Inhalten</p>
+              <p className="text-gray-300">Erstelle eine personalisierte Radio Show mit aktuellen News von der RadioX API</p>
             </div>
             <button
-              onClick={generateShow}
+              onClick={handleGenerateShow}
               disabled={isGenerating}
               className="px-8 py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 shadow-lg"
             >
               {isGenerating ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <Loader className="w-5 h-5 animate-spin" />
                   Generiere Show...
                 </>
               ) : (
@@ -300,30 +264,59 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Preset Selection */}
-          <div className="grid md:grid-cols-3 gap-4 mb-6">
-            {showPresets.map((preset) => (
-              <button
-                key={preset.id}
-                onClick={() => setSelectedPreset(preset)}
-                className={`p-4 rounded-xl border transition-all ${
-                  selectedPreset?.id === preset.id
-                    ? 'bg-blue-500/20 border-blue-500 text-blue-300'
-                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
-                }`}
+          {/* Configuration */}
+          <div className="grid md:grid-cols-4 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Kanal</label>
+              <select
+                value={selectedChannel}
+                onChange={(e) => setSelectedChannel(e.target.value)}
+                className="w-full bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-white"
               >
-                <h4 className="font-semibold mb-1">{preset.display_name}</h4>
-                <p className="text-sm opacity-80">{preset.description}</p>
-                <div className="flex items-center gap-2 mt-2 text-xs">
-                  <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
-                    {preset.city_focus}
-                  </span>
-                  <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded">
-                    {preset.primary_speaker}
-                  </span>
-                </div>
-              </button>
-            ))}
+                {channels.map(channel => (
+                  <option key={channel.id} value={channel.id}>{channel.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">News Anzahl</label>
+              <select
+                value={newsCount}
+                onChange={(e) => setNewsCount(Number(e.target.value))}
+                className="w-full bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-white"
+              >
+                <option value={1}>1 News</option>
+                <option value={2}>2 News</option>
+                <option value={3}>3 News</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Haupt-Sprecher</label>
+              <select
+                value={primarySpeaker}
+                onChange={(e) => setPrimarySpeaker(e.target.value)}
+                className="w-full bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-white"
+              >
+                {speakers.map(speaker => (
+                  <option key={speaker.id} value={speaker.id}>{speaker.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Co-Sprecher</label>
+              <select
+                value={secondarySpeaker}
+                onChange={(e) => setSecondarySpeaker(e.target.value)}
+                className="w-full bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-white"
+              >
+                {speakers.map(speaker => (
+                  <option key={speaker.id} value={speaker.id}>{speaker.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {isGenerating && (
@@ -339,46 +332,96 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* Shows List */}
+        <div className="bg-black/30 rounded-2xl p-6 border border-white/10 mb-8">
+          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <List className="w-5 h-5" />
+            Verfügbare Shows ({shows.length})
+          </h3>
+          
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader className="w-6 h-6 text-blue-400 animate-spin" />
+              <span className="ml-2 text-gray-300">Lade Shows...</span>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {shows.map((show) => (
+                <button
+                  key={show.id}
+                  onClick={() => handleLoadShow(show)}
+                  className={`p-4 rounded-xl border transition-all text-left ${
+                    currentShow?.session_id === show.id
+                      ? 'bg-blue-500/20 border-blue-500 text-blue-300'
+                      : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                  }`}
+                >
+                  <h4 className="font-semibold mb-1">{show.title}</h4>
+                  <p className="text-sm opacity-80 mb-2">{show.script_preview}</p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded">
+                      {show.channel}
+                    </span>
+                    <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                      {show.news_count} News
+                    </span>
+                    <span className="text-gray-400">
+                      {new Date(show.created_at).toLocaleDateString('de-CH')}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Show Details Panel */}
-        {showDetails && selectedPreset && (
+        {showDetails && currentShow && (
           <div className="bg-black/30 rounded-2xl p-6 border border-white/10 mb-8">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               <Settings className="w-5 h-5" />
-              Show-Details & KI-Konfiguration
+              Show-Details & Transkript
             </h3>
             
             <div className="grid md:grid-cols-2 gap-6">
-              {/* GPT Instructions */}
+              {/* Show Stats */}
               <div>
-                <h4 className="text-lg font-semibold text-blue-400 mb-2">🧠 KI-Anweisungen</h4>
-                <div className="bg-black/50 rounded-lg p-4 border border-blue-500/20">
-                  <p className="text-gray-300 text-sm leading-relaxed">
-                    {selectedPreset.gpt_selection_instructions}
-                  </p>
+                <h4 className="text-lg font-semibold text-blue-400 mb-2">📊 Show-Statistiken</h4>
+                <div className="bg-black/50 rounded-lg p-4 border border-blue-500/20 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">News gesammelt:</span>
+                    <span className="text-green-400">{currentShow.metadata.content_stats.total_news_collected}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">News ausgewählt:</span>
+                    <span className="text-blue-400">{currentShow.metadata.content_stats.news_selected}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Geschätzte Dauer:</span>
+                    <span className="text-purple-400">{currentShow.estimated_duration_minutes} Min</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Segmente:</span>
+                    <span className="text-orange-400">{currentShow.segments.length}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Configuration */}
+              {/* Script Preview */}
               <div>
-                <h4 className="text-lg font-semibold text-purple-400 mb-2">⚙️ Konfiguration</h4>
-                <div className="space-y-3">
-                  <div className="bg-black/50 rounded-lg p-3 border border-purple-500/20">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-400 text-sm">RSS Filter:</span>
+                <h4 className="text-lg font-semibold text-purple-400 mb-2">📝 Script Preview</h4>
+                <div className="bg-black/50 rounded-lg p-4 border border-purple-500/20 max-h-64 overflow-y-auto">
+                  {currentShow.segments.slice(0, 5).map((segment, index) => (
+                    <div key={index} className="mb-3">
+                      <span className="text-yellow-400 font-semibold uppercase text-sm">
+                        {segment.speaker}:
+                      </span>
+                      <p className="text-gray-300 text-sm mt-1">{segment.text}</p>
                     </div>
-                    <p className="text-gray-300 text-sm">{selectedPreset.rss_feed_filter}</p>
-                  </div>
-                  
-                  <div className="bg-black/50 rounded-lg p-3 border border-green-500/20">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-400 text-sm">Sprecher Setup:</span>
-                    </div>
-                    <p className="text-gray-300 text-sm">
-                      Haupt: {selectedPreset.primary_speaker}
-                      {selectedPreset.secondary_speaker && ` • Zweit: ${selectedPreset.secondary_speaker}`}
-                      {selectedPreset.weather_speaker && ` • Wetter: ${selectedPreset.weather_speaker}`}
-                    </p>
-                  </div>
+                  ))}
+                  {currentShow.segments.length > 5 && (
+                    <p className="text-gray-500 text-sm italic">... und {currentShow.segments.length - 5} weitere Segmente</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -386,36 +429,36 @@ export default function HomePage() {
         )}
 
         {/* Live Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-3 gap-6">
           <div className="bg-black/30 rounded-xl p-6 border border-white/10">
-            <h4 className="text-lg font-semibold text-green-400 mb-3">📊 Live Data</h4>
+            <h4 className="text-lg font-semibold text-green-400 mb-3">📊 API Status</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">Bitcoin:</span>
-                <span className="text-green-400">$105,351.03 (+3.9%)</span>
+                <span className="text-gray-400">RadioX API:</span>
+                <span className="text-green-400">Online</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Wetter Zürich:</span>
-                <span className="text-blue-400">30°C ☀️</span>
+                <span className="text-gray-400">Shows verfügbar:</span>
+                <span className="text-blue-400">{shows.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Preset:</span>
-                <span className="text-purple-400">{selectedPreset?.preset_name || 'none'}</span>
+                <span className="text-gray-400">Aktuelle Show:</span>
+                <span className="text-purple-400">{currentShow ? 'Geladen' : 'Keine'}</span>
               </div>
             </div>
           </div>
 
           <div className="bg-black/30 rounded-xl p-6 border border-white/10">
-            <h4 className="text-lg font-semibold text-blue-400 mb-3">🎯 Focus</h4>
+            <h4 className="text-lg font-semibold text-blue-400 mb-3">🎯 Konfiguration</h4>
             <div className="space-y-2">
               <div className="text-gray-300">
-                <span className="text-gray-400">Stadt:</span> {selectedPreset?.city_focus || 'Global'}
+                <span className="text-gray-400">Kanal:</span> {selectedChannel}
               </div>
               <div className="text-gray-300">
-                <span className="text-gray-400">Typ:</span> {selectedPreset?.display_name || 'Standard'}
+                <span className="text-gray-400">News:</span> {newsCount}
               </div>
               <div className="text-gray-300">
-                <span className="text-gray-400">Status:</span> <span className="text-green-400">Active</span>
+                <span className="text-gray-400">Sprecher:</span> {primarySpeaker} & {secondarySpeaker}
               </div>
             </div>
           </div>
@@ -424,46 +467,30 @@ export default function HomePage() {
             <h4 className="text-lg font-semibold text-purple-400 mb-3">🔧 System</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
+                <span className="text-gray-400">Frontend:</span>
+                <span className="text-green-400">v5.1</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-400">API:</span>
-                <span className="text-green-400">Online</span>
+                <span className="text-green-400">v1</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Supabase:</span>
-                <span className="text-green-400">Connected</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">ElevenLabs:</span>
-                <span className="text-green-400">Ready</span>
+                <span className="text-gray-400">Status:</span>
+                <span className="text-green-400">Live</span>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Current Show Script Preview */}
-        {currentShow?.script_content && (
-          <div className="bg-black/30 rounded-2xl p-6 border border-white/10">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Radio className="w-5 h-5" />
-              Show Script Preview
-            </h3>
-            <div className="bg-black/50 rounded-lg p-4 max-h-64 overflow-y-auto">
-              <pre className="text-gray-300 text-sm whitespace-pre-wrap">
-                {currentShow.script_content.substring(0, 1000)}
-                {currentShow.script_content.length > 1000 && '...'}
-              </pre>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-black/40 border-t border-white/10 backdrop-blur-xl p-6 text-center">
+      <footer className="bg-black/40 border-t border-white/10 backdrop-blur-xl p-6 text-center mt-8">
         <div className="text-gray-400 text-sm">
-          <p>© 2024 RadioX AI • Powered by OpenAI & ElevenLabs</p>
+          <p>© 2024 RadioX AI • Powered by Production API</p>
           <p className="mt-1 font-mono">
-            Status: <span className="text-green-400">ONLINE</span> • 
-            Version: <span className="text-blue-400">5.0.0</span> • 
-            DB: <span className="text-purple-400">Supabase Connected</span>
+            Status: <span className="text-green-400">LIVE</span> • 
+            API: <span className="text-blue-400">api.radiox.cloud</span> • 
+            Version: <span className="text-purple-400">5.1.0</span>
           </p>
         </div>
       </footer>
