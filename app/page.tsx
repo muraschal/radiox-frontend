@@ -125,8 +125,8 @@ export default function HomePage() {
                   {currentShow?.broadcast_style || 'RadioX AI Radio'} - {currentShow?.metadata?.channel || 'Zürich'}
                 </h2>
                 <p className="text-gray-300 mb-2">
-                  {currentShow ? 
-                    `${currentShow.metadata.content_stats.news_selected} News • ${currentShow.estimated_duration_minutes} Min` : 
+                  {currentShow && currentShow.metadata?.content_stats ? 
+                    `${currentShow.metadata.content_stats.news_selected} News • ${currentShow.estimated_duration_minutes || 'N/A'} Min` : 
                     'Wähle eine Show oder generiere eine neue'
                   }
                 </p>
@@ -138,7 +138,7 @@ export default function HomePage() {
                   <span className="flex items-center gap-1 text-purple-400">
                     <Users className="w-3 h-3" />
                     {currentShow?.metadata?.speakers?.primary?.name || primarySpeaker}
-                    {currentShow?.metadata?.speakers?.secondary && ` & ${currentShow.metadata.speakers.secondary.name}`}
+                    {currentShow?.metadata?.speakers?.secondary?.name && ` & ${currentShow.metadata.speakers.secondary.name}`}
                   </span>
                   <span className="flex items-center gap-1 text-green-400">
                     <Clock className="w-3 h-3" />
@@ -388,41 +388,47 @@ export default function HomePage() {
               <div>
                 <h4 className="text-lg font-semibold text-blue-400 mb-2">📊 Show-Statistiken</h4>
                 <div className="bg-black/50 rounded-lg p-4 border border-blue-500/20 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">News gesammelt:</span>
-                    <span className="text-green-400">{currentShow.metadata.content_stats.total_news_collected}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">News ausgewählt:</span>
-                    <span className="text-blue-400">{currentShow.metadata.content_stats.news_selected}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Geschätzte Dauer:</span>
-                    <span className="text-purple-400">{currentShow.estimated_duration_minutes} Min</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Segmente:</span>
-                    <span className="text-orange-400">{currentShow.segments.length}</span>
-                  </div>
+                                     <div className="flex justify-between">
+                     <span className="text-gray-400">News gesammelt:</span>
+                     <span className="text-green-400">{currentShow.metadata?.content_stats?.total_news_collected || 'N/A'}</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <span className="text-gray-400">News ausgewählt:</span>
+                     <span className="text-blue-400">{currentShow.metadata?.content_stats?.news_selected || 'N/A'}</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <span className="text-gray-400">Geschätzte Dauer:</span>
+                     <span className="text-purple-400">{currentShow.estimated_duration_minutes || 'N/A'} Min</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <span className="text-gray-400">Segmente:</span>
+                     <span className="text-orange-400">{currentShow.segments?.length || 0}</span>
+                   </div>
                 </div>
               </div>
 
               {/* Script Preview */}
               <div>
                 <h4 className="text-lg font-semibold text-purple-400 mb-2">📝 Script Preview</h4>
-                <div className="bg-black/50 rounded-lg p-4 border border-purple-500/20 max-h-64 overflow-y-auto">
-                  {currentShow.segments.slice(0, 5).map((segment, index) => (
-                    <div key={index} className="mb-3">
-                      <span className="text-yellow-400 font-semibold uppercase text-sm">
-                        {segment.speaker}:
-                      </span>
-                      <p className="text-gray-300 text-sm mt-1">{segment.text}</p>
-                    </div>
-                  ))}
-                  {currentShow.segments.length > 5 && (
-                    <p className="text-gray-500 text-sm italic">... und {currentShow.segments.length - 5} weitere Segmente</p>
-                  )}
-                </div>
+                                 <div className="bg-black/50 rounded-lg p-4 border border-purple-500/20 max-h-64 overflow-y-auto">
+                   {currentShow.segments && currentShow.segments.length > 0 ? (
+                     <>
+                       {currentShow.segments.slice(0, 5).map((segment, index) => (
+                         <div key={index} className="mb-3">
+                           <span className="text-yellow-400 font-semibold uppercase text-sm">
+                             {segment.speaker}:
+                           </span>
+                           <p className="text-gray-300 text-sm mt-1">{segment.text}</p>
+                         </div>
+                       ))}
+                       {currentShow.segments.length > 5 && (
+                         <p className="text-gray-500 text-sm italic">... und {currentShow.segments.length - 5} weitere Segmente</p>
+                       )}
+                     </>
+                   ) : (
+                     <p className="text-gray-500 text-sm italic">Keine Segmente verfügbar</p>
+                   )}
+                 </div>
               </div>
             </div>
           </div>
