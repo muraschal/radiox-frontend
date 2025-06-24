@@ -1,6 +1,45 @@
 'use client'
 
+import React, { useState, useRef, useEffect } from 'react'
+import { Play, Pause, Volume2, Download, Radio, Zap, Clock, Mic } from 'lucide-react'
+
 export default function HomePage() {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolume] = useState(1)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        audioRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
+    }
+  }
+
+  const generateShow = async () => {
+    setIsGenerating(true)
+    try {
+      // Call the show generation API
+      const response = await fetch('/api/generate-show', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preset: 'zurich', duration_minutes: 3 })
+      })
+      const data = await response.json()
+      console.log('Show generated:', data)
+    } catch (error) {
+      console.error('Generation failed:', error)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* MVP Banner */}
@@ -102,6 +141,166 @@ export default function HomePage() {
                   <div className="text-sm text-gray-300">{tech.name}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Live Player Section */}
+        <section className="container mx-auto px-6 py-16">
+          <div className="max-w-4xl mx-auto">
+            <div className="glassmorphism p-8 mb-12">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <Radio className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">🔴 LIVE NOW</h2>
+                  <p className="text-gray-300">18:00 Zürich Premium Show</p>
+                </div>
+                <div className="ml-auto">
+                  <span className="px-3 py-1 bg-red-500 text-white text-sm rounded-full animate-pulse">
+                    ON AIR
+                  </span>
+                </div>
+              </div>
+
+              {/* Audio Player */}
+              <div className="bg-black/30 rounded-xl p-6 mb-6">
+                <audio 
+                  ref={audioRef}
+                  onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                  onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+                  onEnded={() => setIsPlaying(false)}
+                  className="hidden"
+                >
+                  <source src="/api/audio/zurich_18uhr_premium.mp3" type="audio/mpeg" />
+                </audio>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                  />
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={togglePlay}
+                      className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform"
+                    >
+                      {isPlaying ? (
+                        <Pause className="w-6 h-6 text-white" />
+                      ) : (
+                        <Play className="w-6 h-6 text-white ml-1" />
+                      )}
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <Volume2 className="w-4 h-4 text-gray-400" />
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={volume}
+                        onChange={(e) => {
+                          const newVolume = parseFloat(e.target.value)
+                          setVolume(newVolume)
+                          if (audioRef.current) audioRef.current.volume = newVolume
+                        }}
+                        className="w-20 accent-blue-500"
+                      />
+                    </div>
+
+                    <div className="text-sm text-gray-400">
+                      {Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / 
+                      {Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                      <Download className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Show Info */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Aktuelle Sendung</h3>
+                  <p className="text-gray-300 mb-4">
+                    Marcel & Jarvis diskutieren Web3-Technologie, Crypto Spoofing und die neuesten Bitcoin-Entwicklungen. 
+                    Plus lokale News aus Zürich!
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Bitcoin</span>
+                    <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">Web3</span>
+                    <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">Zürich</span>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Live Stats</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Bitcoin:</span>
+                      <span className="text-green-400">$105,351.03 (+3.9%)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Wetter Zürich:</span>
+                      <span className="text-blue-400">30°C ☀️</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Sendung:</span>
+                      <span className="text-purple-400">5 Min Premium</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Generate New Show */}
+            <div className="glassmorphism p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">🎬 Neue Show generieren</h3>
+                  <p className="text-gray-300">Erstelle eine fresh AI-Radio Show mit aktuellen News</p>
+                </div>
+                <button
+                  onClick={generateShow}
+                  disabled={isGenerating}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Generiere...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      Generate Show
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {isGenerating && (
+                <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Mic className="w-5 h-5 text-blue-400 animate-pulse" />
+                    <div>
+                      <p className="text-blue-300 font-medium">AI arbeitet...</p>
+                      <p className="text-gray-400 text-sm">Sammle News, generiere Script, produziere Audio...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
