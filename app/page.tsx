@@ -9,6 +9,8 @@ export default function HomePage() {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [currentShow, setCurrentShow] = useState<any>(null)
+  const [audioFile, setAudioFile] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const togglePlay = () => {
@@ -25,14 +27,38 @@ export default function HomePage() {
   const generateShow = async () => {
     setIsGenerating(true)
     try {
-      // Call the show generation API
-      const response = await fetch('/api/generate-show', {
+      // Step 1: Generate show script
+      const showResponse = await fetch('/api/generate-show', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preset: 'zurich', duration_minutes: 3 })
       })
-      const data = await response.json()
-      console.log('Show generated:', data)
+      const showData = await showResponse.json()
+      console.log('Show generated:', showData)
+      setCurrentShow(showData)
+
+      if (showData.success && showData.script_content) {
+        // Step 2: Generate audio from script
+        const audioResponse = await fetch('/api/generate-audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            script_content: showData.script_content,
+            session_id: showData.session_id,
+            voice_quality: 'high'
+          })
+        })
+        const audioData = await audioResponse.json()
+        console.log('Audio generated:', audioData)
+        
+        if (audioData.success && audioData.audio_filename) {
+          setAudioFile(audioData.audio_filename)
+          // Reload audio element with new file
+          if (audioRef.current) {
+            audioRef.current.load()
+          }
+        }
+      }
     } catch (error) {
       console.error('Generation failed:', error)
     } finally {
@@ -173,7 +199,7 @@ export default function HomePage() {
                   onEnded={() => setIsPlaying(false)}
                   className="hidden"
                 >
-                  <source src="/api/audio/zurich_18uhr_premium.mp3" type="audio/mpeg" />
+                  {audioFile && <source src={`/api/audio/${audioFile}`} type="audio/mpeg" />}
                 </audio>
 
                 {/* Progress Bar */}
