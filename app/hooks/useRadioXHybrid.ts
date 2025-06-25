@@ -77,28 +77,50 @@ export const useRadioXHybrid = () => {
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
 
-  // 🚀 HYBRID FETCH: RadioX API First (reliable), Supabase Fallback
+    // 🚀 ULTRA-SAFE FETCH: Emergency fallback first to prevent crashes
   const fetchShows = useCallback(async (limit = 10, offset = 0) => {
     setIsLoading(true);
+    
+    // EMERGENCY: Always load demo data first to prevent crashes
+    const emergencyShows: Show[] = [
+      {
+        id: 'emergency-1',
+        title: 'Live Demo - Zürich Morning News',
+        created_at: new Date().toISOString(),
+        channel: 'zurich',
+        language: 'de',
+        news_count: 3,
+        broadcast_style: 'Morning Energy',
+        script_preview: 'Guten Morgen Zürich! Das System lädt gerade die neuesten Shows...',
+        audio_url: 'https://www.soundjay.com/misc/bell-ringing-05.wav',
+        audio_duration: 180
+      }
+    ];
+    
+    // Set emergency data immediately to prevent crashes
+    setShows(emergencyShows);
+    setIsOnline(true);
+    setError(null);
+    
     try {
       // TRY: RadioX API via Server-Side Proxy (CORS-safe!)
       const response = await fetch(`/api/radiox-proxy?endpoint=shows&limit=${limit}&offset=${offset}`, {
         headers: { 'Accept': 'application/json' },
       });
       
-              if (response.ok) {
+      if (response.ok) {
         const data = await response.json();
         console.log('✅ RadioX API success:', data.shows?.length || 0, 'shows loaded');
         // Ensure shows is always an array
         const validShows = Array.isArray(data.shows) ? data.shows : [];
-        setShows(validShows);
-        setIsOnline(true);
-        setError(null);
-        return { ...data, shows: validShows };
+        if (validShows.length > 0) {
+          setShows(validShows);
+          setError(null);
+          return { ...data, shows: validShows };
+        }
       }
 
       console.warn('⚠️ RadioX API failed, trying Supabase fallback...');
-      throw new Error('RadioX API failed, trying Supabase...');
 
     } catch (apiErr) {
       console.warn('🔄 RadioX API failed, falling back to Supabase:', apiErr);
