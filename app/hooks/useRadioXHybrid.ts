@@ -86,13 +86,15 @@ export const useRadioXHybrid = () => {
         headers: { 'Accept': 'application/json' },
       });
       
-      if (response.ok) {
+              if (response.ok) {
         const data = await response.json();
         console.log('✅ RadioX API success:', data.shows?.length || 0, 'shows loaded');
-        setShows(data.shows || []);
+        // Ensure shows is always an array
+        const validShows = Array.isArray(data.shows) ? data.shows : [];
+        setShows(validShows);
         setIsOnline(true);
         setError(null);
-        return data;
+        return { ...data, shows: validShows };
       }
 
       console.warn('⚠️ RadioX API failed, trying Supabase fallback...');
