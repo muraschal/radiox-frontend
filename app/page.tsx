@@ -4,6 +4,29 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Play, Pause, Volume2, Download, Radio, Zap, Clock, Mic, Settings, Database, Brain, Headphones, Users, MapPin, List, Loader } from 'lucide-react'
 import { useRadioXHybrid, type Show, type ShowDetails, type GenerateShowRequest } from './hooks/useRadioXHybrid'
 
+// 🕐 CLIENT-ONLY CLOCK COMPONENT (Prevents Hydration Mismatch)
+function LiveClock() {
+  const [time, setTime] = useState('')
+
+  useEffect(() => {
+    // Only run on client-side
+    const updateTime = () => {
+      setTime(new Date().toLocaleTimeString('de-CH'))
+    }
+    
+    // Set initial time
+    updateTime()
+    
+    // Update every second
+    const interval = setInterval(updateTime, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  // Return empty string during SSR to prevent hydration mismatch
+  return <>{time || '--:--:--'}</>
+}
+
 export default function HomePage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -115,7 +138,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="text-gray-400 text-sm font-mono">
-              {new Date().toLocaleTimeString('de-CH')}
+              <LiveClock />
             </div>
           </div>
 
