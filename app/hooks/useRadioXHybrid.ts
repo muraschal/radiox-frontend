@@ -275,71 +275,97 @@ export const useRadioXHybrid = () => {
   }, []);
 
   // 📖 LOAD SHOW DETAILS: Hybrid approach
-  const loadShow = useCallback(async (showId: string): Promise<ShowDetails> => {
+  const loadShow = useCallback(async (showId: string): Promise<ShowDetails | null> => {
     setIsLoading(true);
     try {
-      // TRY: Supabase first
-      const { data: supabaseShow, error } = await supabase
-        .from('show_details')
-        .select('*')
-        .eq('session_id', showId)
-        .single();
+      // TRY: Supabase first (only if configured)
+      if (supabase) {
+        try {
+          const { data: supabaseShow, error } = await supabase
+            .from('show_details')
+            .select('*')
+            .eq('session_id', showId)
+            .single();
 
-      if (supabaseShow && !error) {
-        setCurrentShow(supabaseShow);
-        return supabaseShow;
+          if (supabaseShow && !error) {
+            setCurrentShow(supabaseShow);
+            return supabaseShow;
+          }
+        } catch (supabaseError) {
+          console.warn('Supabase show details failed:', supabaseError);
+        }
       }
 
-      // FALLBACK: API
-      const response = await fetch(`${RADIOX_API_BASE}/api/v1/shows/${showId}`, {
+      // FALLBACK: API via proxy
+      const response = await fetch(`/api/radiox-proxy?endpoint=shows/${showId}`, {
         headers: { 'Accept': 'application/json' },
       });
       
-      if (!response.ok) throw new Error(`Failed to load show: ${response.statusText}`);
+      if (!response.ok) {
+        console.warn('Show details not available');
+        return null;
+      }
       
       const show: ShowDetails = await response.json();
       setCurrentShow(show);
       
-      // Sync to Supabase (fire and forget)
-      supabase.from('show_details').upsert({ session_id: showId, ...show });
+      // Sync to Supabase (fire and forget, only if configured)
+      if (supabase) {
+        supabase.from('show_details').upsert({ session_id: showId, ...show }).then(({ error }) => {
+          if (error) console.warn('Supabase sync failed:', error);
+        });
+      }
       
       return show;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load show';
-      setError(errorMessage);
-      throw err;
+      console.warn('Load show failed gracefully:', err);
+      setError('Show details temporarily unavailable');
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // 🔄 REAL-TIME SUBSCRIPTIONS: Supabase Magic
+  // 🔄 REAL-TIME SUBSCRIPTIONS: Supabase Magic (only if configured)
   useEffect(() => {
-    const channel = supabase
-      .channel('shows-realtime')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'shows' 
-      }, (payload) => {
-        console.log('New show added:', payload.new);
-        setShows(prev => [payload.new as Show, ...prev]);
-      })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'shows' 
-      }, (payload) => {
-        console.log('Show updated:', payload.new);
-        setShows(prev => prev.map(show => 
-          show.id === payload.new.id ? payload.new as Show : show
-        ));
-      })
-      .subscribe();
+    if (!supabase) {
+      console.log('Supabase not configured, skipping real-time subscriptions');
+      return;
+    }
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    try {
+      const channel = supabase
+        .channel('shows-realtime')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'shows' 
+        }, (payload) => {
+          console.log('New show added:', payload.new);
+          setShows(prev => [payload.new as Show, ...prev]);
+        })
+        .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'shows' 
+        }, (payload) => {
+          console.log('Show updated:', payload.new);
+          setShows(prev => prev.map(show => 
+            show.id === payload.new.id ? payload.new as Show : show
+          ));
+        })
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (error) {
+          console.warn('Error removing Supabase channel:', error);
+        }
+      };
+    } catch (error) {
+      console.warn('Error setting up Supabase real-time:', error);
+    }
   }, []);
 
   // Auto-fetch on mount
