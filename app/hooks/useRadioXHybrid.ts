@@ -81,8 +81,8 @@ export const useRadioXHybrid = () => {
   const fetchShows = useCallback(async (limit = 10, offset = 0) => {
     setIsLoading(true);
     try {
-      // TRY: RadioX API direkt (funktioniert zuverlässig!)
-      const response = await fetch(`${RADIOX_API_BASE}/api/v1/shows?limit=${limit}&offset=${offset}`, {
+      // TRY: RadioX API via Server-Side Proxy (CORS-safe!)
+      const response = await fetch(`/api/radiox-proxy?endpoint=shows&limit=${limit}&offset=${offset}`, {
         headers: { 'Accept': 'application/json' },
       });
       
@@ -168,8 +168,8 @@ export const useRadioXHybrid = () => {
     setShows(prev => [placeholderShow, ...prev]);
     
          try {
-       // DIREKTE RadioX API - Kein lokaler Proxy
-       const response = await fetch(`${RADIOX_API_BASE}/api/v1/shows/generate`, {
+       // RadioX API via Server-Side Proxy (CORS-safe!)
+       const response = await fetch(`/api/radiox-proxy`, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(request),
