@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Pause, Volume2, Download, Radio, Zap, Clock, Mic, Settings, Database, Brain, Headphones, Users, MapPin, List, Loader } from 'lucide-react'
-import { useRadioXAPI, type Show, type ShowDetails, type GenerateShowRequest } from './hooks/useRadioXAPI'
+import { useRadioXHybrid, type Show, type ShowDetails, type GenerateShowRequest } from './hooks/useRadioXHybrid'
 
 export default function HomePage() {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -16,20 +16,21 @@ export default function HomePage() {
   const [secondarySpeaker, setSecondarySpeaker] = useState('jarvis')
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  // Use RadioX API Hook
+  // Use RadioX Hybrid Hook
   const {
     shows,
     currentShow,
     isGenerating,
     isLoading,
     error,
+    isOnline,
     generateShow,
     loadShow,
     clearError,
     formatDuration,
     getChannels,
     getSpeakers,
-  } = useRadioXAPI()
+  } = useRadioXHybrid()
 
   const channels = getChannels()
   const speakers = getSpeakers()
@@ -102,8 +103,10 @@ export default function HomePage() {
                 Radio<span className="text-red-500">X</span><sup className="text-sm">AI</sup>
               </h1>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-red-400 text-sm font-medium">LIVE</span>
+                <div className={`w-2 h-2 ${isOnline ? 'bg-green-500' : 'bg-red-500'} rounded-full animate-pulse`} />
+                <span className={`${isOnline ? 'text-green-400' : 'text-red-400'} text-sm font-medium`}>
+                  {isOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </div>
             </div>
             <div className="text-gray-400 text-sm font-mono">
@@ -172,8 +175,8 @@ export default function HomePage() {
               onPause={() => setIsPlaying(false)}
               className="hidden"
             >
-              {currentShow?.metadata?.audio_url && (
-                <source src={currentShow.metadata.audio_url} type="audio/mpeg" />
+              {(currentShow?.metadata?.audio_url || currentShow?.audio_url) && (
+                <source src={currentShow.metadata?.audio_url || currentShow.audio_url} type="audio/mpeg" />
               )}
             </audio>
 
