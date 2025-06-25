@@ -56,9 +56,14 @@ export default function HomePage() {
         secondary_speaker: secondarySpeaker,
       }
       
-      await generateShow(request)
+      const result = await generateShow(request)
+      if (result) {
+        console.log('✅ Show generated successfully')
+      } else {
+        console.log('⚠️ Show generation temporarily unavailable')
+      }
     } catch (error) {
-      console.error('Failed to generate show:', error)
+      console.warn('Show generation error handled gracefully:', error)
     }
   }
 
