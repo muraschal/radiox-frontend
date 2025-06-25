@@ -23,9 +23,24 @@ export async function GET(request: NextRequest) {
     }
     
     const data = await response.json();
-    console.log(`✅ RadioX API success: ${data.shows?.length || 0} shows`);
     
-    return NextResponse.json(data, {
+    // Transform API response to expected format
+    let transformedData;
+    if (Array.isArray(data)) {
+      // RadioX API returns array directly, transform to expected format
+      transformedData = data;
+      console.log(`✅ RadioX API success: ${data.length} shows (array format)`);
+    } else if (data.shows && Array.isArray(data.shows)) {
+      // Already in expected format
+      transformedData = data.shows;
+      console.log(`✅ RadioX API success: ${data.shows.length} shows (object format)`);
+    } else {
+      // Unknown format, return empty
+      transformedData = [];
+      console.log(`⚠️ RadioX API unknown format:`, data);
+    }
+    
+    return NextResponse.json(transformedData, {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
