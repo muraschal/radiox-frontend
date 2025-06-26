@@ -1,14 +1,33 @@
+// 🎯 CLEAN NEXT.JS CONFIG - FRONTEND ONLY
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // App directory is now stable in Next.js 14 - no experimental flag needed
+  // Performance optimizations
   images: {
     domains: ['zwcvvbgkqhexfcldwuxq.supabase.co'],
+    formats: ['image/webp', 'image/avif'],
   },
-  env: {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  }
+  
+  // Compiler optimizations
+  swcMinify: true,
+  
+  // React optimizations
+  reactStrictMode: true,
+  
+  // Build optimizations
+  compress: true,
+  poweredByHeader: false,
+  
+  // Progressive Web App optimizations
+  ...(process.env.NODE_ENV === 'production' && {
+    generateEtags: true,
+    trailingSlash: false,
+  }),
+  
+  // Development optimizations
+  ...(process.env.NODE_ENV === 'development' && {
+    // Fast refresh is enabled by default in Next.js 14
+  }),
 }
 
 module.exports = nextConfig 

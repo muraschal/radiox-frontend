@@ -18,7 +18,11 @@ export const metadata = {
     title: 'RadioX AI - Your Radio, Just Got Smarter',
     description: 'AI-generated. Enterprise quality. Zero compromise. It\'s the future, and it\'s loud.',
   },
-  viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
   themeColor: '#000000',
 }
 
