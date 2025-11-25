@@ -13,6 +13,18 @@ export const ShowCard: React.FC<ShowCardProps> = ({ data, isActive, onClick }) =
   // Calculate total duration from segments
   const totalDuration = data.segments.reduce((acc, seg) => acc + seg.duration, 0);
 
+  // AI-Cover-Metadaten (Provider/Modell) für Tooltip/Alt-Text
+  const aiCoverMeta = data.metadata?.media_assets?.image?.cover;
+  const aiCoverProvider = aiCoverMeta?.provider;
+  const aiCoverModel = aiCoverMeta?.model;
+  const hasAICoverMeta = !!(aiCoverProvider || aiCoverModel);
+
+  const aiCoverLabel = hasAICoverMeta
+    ? `KI-generiertes Cover${aiCoverProvider ? ` · ${aiCoverProvider}` : ''}${
+        aiCoverModel ? ` · Modell ${aiCoverModel}` : ''
+      }`
+    : null;
+
   const createdAt = new Date(data.createdAt);
   const archiveTimeLabel = isNaN(createdAt.getTime())
     ? data.date
@@ -38,7 +50,14 @@ export const ShowCard: React.FC<ShowCardProps> = ({ data, isActive, onClick }) =
       <div className="relative aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-900">
         <img 
           src={data.coverUrl} 
-          alt={data.title}
+          alt={
+            hasAICoverMeta
+              ? `${data.title} (Coverbild KI-generiert${
+                  aiCoverProvider ? ` mit ${aiCoverProvider}` : ''
+                }${aiCoverModel ? `, Modell ${aiCoverModel}` : ''})`
+              : data.title
+          }
+          title={aiCoverLabel || undefined}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
         

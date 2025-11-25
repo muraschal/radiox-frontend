@@ -22,6 +22,34 @@ export interface Segment {
   audioUrl?: string; // URL for the actual audio file
 }
 
+// --- SHOW METADATA STRUCTURES (partial, focused on media assets / AI cover) ---
+
+export interface ShowCoverMetadata {
+  provider?: string;       // e.g. "gemini" oder "openai"
+  model?: string;          // z.B. "gemini-1.5-pro", "gpt-image-1"
+  prompt?: string;
+  generated_at?: string;
+  role?: string;
+}
+
+export interface ShowMediaAssetsImageMetadata {
+  cover?: ShowCoverMetadata;
+}
+
+export interface ShowMediaAssetsMetadata {
+  image?: ShowMediaAssetsImageMetadata;
+}
+
+export interface ShowMetadata {
+  media_assets?: ShowMediaAssetsMetadata;
+  seo_description?: string;
+  show_name?: string;
+  categories?: string[];
+  speakers?: string[];
+  // Fallback für alle weiteren Felder, die wir nicht explizit typisieren
+  [key: string]: any;
+}
+
 export interface Show {
   id: string;
   title: string;
@@ -42,6 +70,7 @@ export interface Show {
   tags?: string[]; // SEO tags
   totalDuration?: number;
   segments: Segment[];
+  metadata?: ShowMetadata;
 }
 
 export interface PlayerState {

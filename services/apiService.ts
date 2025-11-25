@@ -56,6 +56,7 @@ const mapShowToShowWithSegments = (row: any): Show => {
   // 1. BASIC METADATA
   const id = row.id?.toString() || `show-${Math.random()}`;
   const title = getProperty(row, ['title', 'show_name', 'name']) || "Untitled Show";
+  const metadata = row.metadata ?? undefined;
 
   // Use created_at (or date) as canonical release timestamp
   const createdAtSource = getProperty(row, ['created_at', 'date']) || new Date().toISOString();
@@ -74,7 +75,7 @@ const mapShowToShowWithSegments = (row: any): Show => {
   // HOSTS
   let hosts = "RadioX Host";
   const rawSpeakers = getProperty(row, ['speakers', 'hosts']);
-  const metaSpeakers = row.metadata?.speakers;
+  const metaSpeakers = metadata?.speakers;
   const finalSpeakers = rawSpeakers || metaSpeakers;
   if (Array.isArray(finalSpeakers) && finalSpeakers.length > 0) {
       hosts = finalSpeakers.join(' & ');
@@ -84,15 +85,15 @@ const mapShowToShowWithSegments = (row: any): Show => {
 
   // DESCRIPTION (Prioritize SEO Description from Metadata)
   // We check row.metadata.seo_description first, then a flat seo_description column, then others.
-  const description = row.metadata?.seo_description || 
+  const description = metadata?.seo_description || 
                       getProperty(row, ['seo_description', 'description', 'summary', 'script_preview']) || 
                       "No description available.";
 
   // TAGS / FILTER METADATA (e.g. show key, categories)
   const tags: string[] = [];
-  const showKey = row.metadata?.show_name || row.show_name || title;
+  const showKey = metadata?.show_name || row.show_name || title;
   if (showKey) tags.push(String(showKey));
-  const metaCategories = row.metadata?.categories;
+  const metaCategories = metadata?.categories;
   if (Array.isArray(metaCategories)) {
       metaCategories.forEach((c: any) => {
           if (c) tags.push(String(c));
@@ -211,11 +212,13 @@ const mapShowToShowWithSegments = (row: any): Show => {
           });
 
           // D. Source Extraction & Image Lookup
-          let sourceUrl = undefined;
-          let sourceName = undefined;
-          let articleTitle = undefined;
-          let sourcePublishedAt = undefined;
-          let articleImageUrl = getProperty(seg, ['image_url', 'image', 'thumbnail']);
+          // Prefer new, backend-prepared fields if present (from _build_used_news_projection / link_metadata)
+          let sourceUrl = getProperty(seg, ['sourceUrl', 'source_url']);
+          let sourceName = getProperty(seg, ['sourceName', 'source_name', 'publisher', 'source']);
+          let articleTitle = getProperty(seg, ['articleTitle', 'article_title', 'title', 'headline']);
+          let articleDescription = getProperty(seg, ['articleDescription', 'article_description', 'summary', 'description']);
+          let sourcePublishedAt = getProperty(seg, ['sourcePublishedAt', 'source_published_at', 'published_at', 'date']);
+          let articleImageUrl = getProperty(seg, ['articleImageUrl', 'article_image_url', 'image_url', 'image', 'thumbnail']);
 
           if (Array.isArray(seg.sources)) {
               // Flatten sources if it's an array of strings
@@ -244,8 +247,16 @@ const mapShowToShowWithSegments = (row: any): Show => {
 
               // Extract Source Name & Additional Metadata
               if (primarySource && typeof primarySource === 'object') {
-                  articleTitle = getProperty(primarySource, ['title', 'headline']);
-                  sourcePublishedAt = getProperty(primarySource, ['published_at', 'date']);
+                  // Only override if we don't already have values from the segment itself
+                  if (!articleTitle) {
+                    articleTitle = getProperty(primarySource, ['articleTitle', 'article_title', 'title', 'headline']);
+                  }
+                  if (!articleDescription) {
+                    articleDescription = getProperty(primarySource, ['articleDescription', 'article_description', 'summary', 'description', 'content']);
+                  }
+                  if (!sourcePublishedAt) {
+                    sourcePublishedAt = getProperty(primarySource, ['sourcePublishedAt', 'source_published_at', 'published_at', 'date']);
+                  }
                   if (!sourceName) {
                       sourceName = getProperty(primarySource, ['source_name', 'source', 'publisher', 'outlet']);
                   }
@@ -291,7 +302,7 @@ const mapShowToShowWithSegments = (row: any): Show => {
               startTime: absStart,
               sourceUrl,
               sourceName: sourceName || 'Topic',
-              articleDescription: "", // Structured segments v1 usually don't have summaries per segment yet
+              articleDescription,
               articleTitle,
               sourcePublishedAt,
               articleImageUrl: articleImageUrl, 
@@ -347,16 +358,16 @@ const mapShowToShowWithSegments = (row: any): Show => {
 
               return {
                   id: `${id}-topic-${index}`,
-                  title: getProperty(news, ['title', 'headline']) || `Topic ${index + 1}`,
+                  title: getProperty(news, ['articleTitle', 'article_title', 'title', 'headline']) || `Topic ${index + 1}`,
                   category: getProperty(news, ['category', 'topic']) || "News",
                   duration: duration,
                   startTime: startTime,
-                  sourceUrl: getProperty(news, ['link', 'url', 'article_url', 'web_link']),
-                  sourceName: getProperty(news, ['source', 'publisher', 'outlet']) || "Source",
-              articleDescription: getProperty(news, ['summary', 'description', 'content']),
-              articleTitle: getProperty(news, ['title', 'headline']),
-              sourcePublishedAt: getProperty(news, ['published_at', 'date']),
-                  articleImageUrl: getProperty(news, ['image_url', 'image', 'thumbnail', 'url_to_image']), 
+                  sourceUrl: getProperty(news, ['sourceUrl', 'source_url', 'link', 'url', 'article_url', 'web_link']),
+                  sourceName: getProperty(news, ['sourceName', 'source_name', 'source', 'publisher', 'outlet']) || "Source",
+              articleDescription: getProperty(news, ['articleDescription', 'article_description', 'summary', 'description', 'content']),
+              articleTitle: getProperty(news, ['articleTitle', 'article_title', 'title', 'headline']),
+              sourcePublishedAt: getProperty(news, ['sourcePublishedAt', 'source_published_at', 'published_at', 'date']),
+                  articleImageUrl: getProperty(news, ['articleImageUrl', 'article_image_url', 'image_url', 'image', 'thumbnail', 'url_to_image']), 
                   audioUrl: audioUrl,
                   transcript: chapterTranscript
               };
@@ -396,7 +407,8 @@ const mapShowToShowWithSegments = (row: any): Show => {
     longDescription: description,
     totalDuration: totalAudioDuration > 0 ? totalAudioDuration : undefined,
     tags: tags.length > 0 ? tags : undefined,
-    segments: finalSegments
+    segments: finalSegments,
+    metadata
   };
 };
 

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Dark rounded background to match the RadioX UI -->
+  <rect width="64" height="64" rx="14" fill="#020617" />
+  <!-- Cyan X, using the same accent tone as the UI (tailwind cyan-400) -->
+  <path
+    d="M18 16h8l6 9 6-9h8l-10 16 10 16h-8l-6-9-6 9h-8l10-16z"
+    fill="#22d3ee"
+  />
+</svg>
+
+

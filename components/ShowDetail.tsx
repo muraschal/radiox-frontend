@@ -58,6 +58,18 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
       relativeReleaseLabel = `vor ${diffDays} Tagen veröffentlicht`;
     }
   }
+
+  // AI-Cover-Metadaten (Provider/Modell) aus show.metadata
+  const aiCoverMeta = show.metadata?.media_assets?.image?.cover;
+  const aiCoverProvider = aiCoverMeta?.provider;
+  const aiCoverModel = aiCoverMeta?.model;
+  const hasAICoverMeta = !!(aiCoverProvider || aiCoverModel);
+
+  const aiCoverLabel = hasAICoverMeta
+    ? `KI-generiertes Cover${aiCoverProvider ? ` · ${aiCoverProvider}` : ''}${
+        aiCoverModel ? ` · Modell ${aiCoverModel}` : ''
+      }`
+    : null;
   
   // Sync displayed segment with active playing segment ONLY if user hasn't manually selected one recently
   useEffect(() => {
@@ -220,7 +232,12 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
         )
       : [];
 
-  const coverAlt = show.longDescription || show.description || show.title;
+  const baseCoverAlt = show.longDescription || show.description || show.title;
+  const coverAlt = hasAICoverMeta
+    ? `${baseCoverAlt} (Coverbild KI-generiert${
+        aiCoverProvider ? ` mit ${aiCoverProvider}` : ''
+      }${aiCoverModel ? `, Modell ${aiCoverModel}` : ''})`
+    : baseCoverAlt;
 
   return (
     <div className="min-h-[100dvh] w-full bg-black relative overflow-hidden">
@@ -245,6 +262,7 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                 <img 
                     src={show.coverUrl} 
                     alt={coverAlt} 
+                    title={aiCoverLabel || undefined}
                     className="
                         relative z-10 w-auto h-auto max-w-full max-h-[70vh] 
                         rounded-sm shadow-none border border-white/10
@@ -252,8 +270,8 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                     "
                 />
 
-                {/* Beschreibung als Overlay im Lightbox-View */}
-                {(show.longDescription || show.description) && (
+                {/* Beschreibung / Metadaten als Overlay im Lightbox-View */}
+                {(show.longDescription || show.description || aiCoverLabel) && (
                   <div className="absolute inset-x-0 bottom-0 z-20 px-4 md:px-8 pb-6 pt-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-auto">
                     <h2 className="text-base md:text-lg font-bold text-white mb-2">
                       {show.title}
@@ -261,6 +279,11 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                     <div className="max-h-32 md:max-h-40 overflow-y-auto pr-1 text-xs md:text-sm text-gray-300 leading-relaxed">
                       {show.longDescription || show.description}
                     </div>
+                    {aiCoverLabel && (
+                      <p className="mt-2 text-[10px] text-gray-400">
+                        {aiCoverLabel}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -309,6 +332,7 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                          <img 
                             src={show.coverUrl} 
                             alt={coverAlt}
+                            title={aiCoverLabel || undefined}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                          />
                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -691,7 +715,11 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                             : 'text-gray-200'
                         }`}
                       >
-                        {isIntroSegment ? 'Intro' : isOutroSegment ? 'Outro' : segment.title}
+                        {isIntroSegment
+                          ? 'Intro'
+                          : isOutroSegment
+                          ? 'Outro'
+                          : segment.articleTitle || segment.title}
                       </button>
 
                       {segment.articleDescription && segment.articleDescription.length > 0 && (
