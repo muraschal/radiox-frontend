@@ -71,15 +71,43 @@ const App: React.FC = () => {
 
   // --- SEO-FRIENDLY URL HELPERS ---
   const createShowSlug = (show: Show) => {
-    // e.g. "Zürich - Night" + "24.11.2025" -> "zurich-night-24-11-2025"
-    const base = `${show.title}-${show.date}`
+    /**
+     * Neues, kompaktes Schema:
+     *
+     *   <titel-slug>-<YYMMDDHHMMSS>
+     *
+     * Beispiel:
+     *   Titel: "ZVV Medienspiegel Morning"
+     *   createdAt: 2025-11-25T07:30:27Z (o. ä.)
+     *   -> "zvv-medienspiegel-morning-201125073027"
+     */
+
+    // 1) Titel in einen sauberen Slug verwandeln
+    const titleBase = (show.title || 'show')
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // remove accents
+      .replace(/[\u0300-\u036f]/g, ''); // Akzente entfernen
 
-    return base
-      .replace(/[^a-z0-9]+/g, '-') // non alphanumerics -> "-"
-      .replace(/^-+|-+$/g, ''); // trim dashes
+    const titleSlug = titleBase
+      .replace(/[^a-z0-9]+/g, '-') // Nicht-Alphanumerisches -> "-"
+      .replace(/^-+|-+$/g, ''); // führende/trailing "-" entfernen
+
+    // 2) Zeitstempel aus createdAt im Format YYMMDDHHMMSS
+    let ts = '000000000000';
+    if (show.createdAt) {
+      const created = new Date(show.createdAt);
+      if (!isNaN(created.getTime())) {
+        const yy = String(created.getFullYear()).slice(-2);
+        const mm = String(created.getMonth() + 1).padStart(2, '0');
+        const dd = String(created.getDate()).padStart(2, '0');
+        const hh = String(created.getHours()).padStart(2, '0');
+        const min = String(created.getMinutes()).padStart(2, '0');
+        const ss = String(created.getSeconds()).padStart(2, '0');
+        ts = `${yy}${mm}${dd}${hh}${min}${ss}`;
+      }
+    }
+
+    return `${titleSlug}-${ts}`;
   };
 
   const parseShowRoute = (path: string) => {

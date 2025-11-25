@@ -5,6 +5,18 @@ import { Show, Speaker } from '../types';
 import { MatrixBackground } from './MatrixBackground';
 import { SpeakerBlobs } from './SpeakerBlobs';
 
+// Helper: akzeptiere nur Supabase-Proxy-Bilder aus dem Bucket "article-covers"
+const isSafeSupabaseArticleImage = (url: string | undefined | null): boolean => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.endsWith('supabase.co')) return false;
+    return parsed.pathname.includes('/storage/v1/object/public/article-covers/');
+  } catch {
+    return false;
+  }
+};
+
 interface ShowDetailProps {
   show: Show;
   activeSegmentId: string | null;
@@ -61,8 +73,10 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
 
   // AI-Cover-Metadaten (Provider/Modell) aus show.metadata
   const aiCoverMeta = show.metadata?.media_assets?.image?.cover;
-  const aiCoverProvider = aiCoverMeta?.provider;
-  const aiCoverModel = aiCoverMeta?.model;
+  // Fallback: ältere Shows können Provider/Modell auch in metadata.media_settings.image haben
+  const aiCoverSettings: any = show.metadata?.media_settings?.image;
+  const aiCoverProvider = aiCoverMeta?.provider || aiCoverSettings?.provider;
+  const aiCoverModel = aiCoverMeta?.model || aiCoverSettings?.model;
   const hasAICoverMeta = !!(aiCoverProvider || aiCoverModel);
 
   const aiCoverLabel = hasAICoverMeta
@@ -580,8 +594,16 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
             </span>
           </div>
 
-          <div className="flex-1 p-3 sm:p-4 md:p-5 overflow-x-auto no-scrollbar">
-            <div className="flex gap-3 sm:gap-3.5 md:gap-4 min-w-full">
+          <div className="flex-1 p-3 sm:p-4 md:p-5 overflow-x-auto lg:overflow-x-visible no-scrollbar">
+            <div
+              className="
+                flex lg:grid
+                gap-3 sm:gap-3.5 md:gap-4
+                min-w-full lg:min-w-0
+                lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
+                lg:auto-rows-[minmax(0,1fr)]
+              "
+            >
             {show.segments.map((segment, idx) => {
               const isSelected = idx === safeIndex;
               const isActivePlaying = activeSegmentId === segment.id;
@@ -591,6 +613,13 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
               // 2) Twitter/X-Avatar, falls es ein Tweet-Link ist
               // 3) sonst kein Bild
               let previewImage: string | undefined = segment.articleImageUrl;
+
+              // Safety: Nur Supabase-Proxy-Imgs aus dem Bucket "article-covers" zulassen.
+              // Alte Shows können noch direkte OG-URLs (Unsplash, Publisher-CDNs) enthalten.
+              if (previewImage && !isSafeSupabaseArticleImage(previewImage)) {
+                previewImage = undefined;
+              }
+
               if (!previewImage && segment.sourceUrl) {
                 try {
                   const parsed = new URL(segment.sourceUrl);
@@ -644,8 +673,9 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                     }
                   }}
                   className={`
-                    w-full max-w-xs sm:max-w-sm group relative flex flex-col justify-between px-3 py-3.5 rounded-2xl cursor-pointer transition-all border overflow-hidden
-                    aspect-[21/9] shrink-0
+                    w-full max-w-[260px] sm:max-w-[280px] lg:max-w-none
+                    group relative flex flex-col justify-between px-3 py-3.5 rounded-2xl cursor-pointer transition-all border overflow-hidden
+                    aspect-[21/9] lg:aspect-auto shrink-0 lg:shrink
                     ${isSelected ? 'bg-white/10 border-white/20' : 'bg-[#111]/60 border-white/5 hover:bg-white/5'}
                   `}
                 >
