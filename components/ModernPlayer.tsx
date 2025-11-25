@@ -241,37 +241,37 @@ export const ModernPlayer: React.FC<ModernPlayerProps> = ({
 
       {/* DESKTOP / TABLET: Voller Player */}
       <div className="hidden md:block">
-        <div className="bg-[#050505]/95 backdrop-blur-2xl border-t border-white/10 pb-6 pt-5 px-6 md:px-8 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
-          <div className="max-w-[1920px] mx-auto flex items-center gap-6 md:gap-8">
-            {/* 1. Show & Host Info (CLICKABLE) */}
-            <button
-              type="button"
-              className="flex items-center gap-4 w-[32%] min-w-0 justify-start cursor-pointer group/info bg-transparent border-0 text-left"
-              onClick={onShowDetails}
-              title="Open Show Details"
-            >
-              {/* Cover Art */}
-              <div className="relative w-14 h-14 lg:w-16 lg:h-16 rounded-xl overflow-hidden shrink-0 border border-white/10 hidden sm:block shadow-lg">
-                <img src={show.coverUrl} alt={show.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/info:opacity-100 transition-opacity">
-                  <Maximize2 size={18} className="text-white drop-shadow-lg" />
+        <div className="bg-[#050505]/95 backdrop-blur-2xl border-t border-white/10 pb-5 pt-4 px-6 md:px-8 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+          <div className="max-w-[1920px] mx-auto flex flex-col gap-3">
+            {/* Oberer Row: Info + Controls + Right-Slot */}
+            <div className="flex items-center gap-6 md:gap-8">
+              {/* 1. Show & Host Info (CLICKABLE) */}
+              <button
+                type="button"
+                className="flex items-center gap-4 w-[32%] min-w-0 justify-start cursor-pointer group/info bg-transparent border-0 text-left"
+                onClick={onShowDetails}
+                title="Open Show Details"
+              >
+                {/* Cover Art */}
+                <div className="relative w-14 h-14 lg:w-16 lg:h-16 rounded-xl overflow-hidden shrink-0 border border-white/10 hidden sm:block shadow-lg">
+                  <img src={show.coverUrl} alt={show.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/info:opacity-100 transition-opacity">
+                    <Maximize2 size={18} className="text-white drop-shadow-lg" />
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex flex-col min-w-0">
-                <h3 className="text-white font-bold text-base lg:text-lg leading-tight truncate mb-0.5 group-hover/info:text-cyan-300 transition-colors">
-                  {show.title}
-                </h3>
-                <span className="text-cyan-400 text-xs lg:text-sm font-medium uppercase tracking-wide truncate">
-                  {show.hosts}
-                </span>
-              </div>
-            </button>
+                <div className="flex flex-col min-w-0">
+                  <h3 className="text-white font-bold text-base lg:text-lg leading-tight truncate mb-0.5 group-hover/info:text-cyan-300 transition-colors">
+                    {show.title}
+                  </h3>
+                  <span className="text-cyan-400 text-xs lg:text-sm font-medium uppercase tracking-wide truncate">
+                    {show.hosts}
+                  </span>
+                </div>
+              </button>
 
-            {/* 2. Centered Controls + Progress (symmetrischer Block) */}
-            <div className="flex-1 flex flex-col items-center gap-3">
-              {/* Transport Controls */}
-              <div className="flex items-center justify-center gap-6 lg:gap-8">
+              {/* 2. Centered Controls */}
+              <div className="flex-1 flex items-center justify-center gap-6 lg:gap-8">
                 <button
                   onClick={() => activeSegmentIndex > 0 && onSegmentChange(activeSegmentIndex - 1)}
                   className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2.5"
@@ -305,44 +305,44 @@ export const ModernPlayer: React.FC<ModernPlayerProps> = ({
                 </button>
               </div>
 
-              {/* Time + Progress, mittig unter den Controls */}
-              <div className="w-full max-w-xl mt-1">
-                <div className="flex items-end justify-between font-mono font-bold px-1 tracking-wide text-xs lg:text-sm">
-                  <span className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
-                    {formatTime(displayTime)}
-                  </span>
-                  <span className="text-gray-500">
-                    {formatTime(duration)}
-                  </span>
-                </div>
-
-                <div className="relative h-1.5 w-full group cursor-pointer mt-1">
-                  <div className="absolute inset-0 bg-white/10 rounded-full overflow-hidden" />
-                  <div
-                    className="absolute inset-y-0 left-0 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.4)]"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration}
-                    value={displayTime}
-                    onChange={handleSeekChange}
-                    onMouseDown={handleSeekStart}
-                    onMouseUp={handleSeekEnd}
-                    onTouchStart={handleSeekStart}
-                    onTouchEnd={handleSeekEnd}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                </div>
+              {/* 3. Right-Slot: „Now Playing“ oder spätere Actions */}
+              <div className="hidden lg:flex items-center justify-end w-[20%] text-xs text-gray-500 gap-3">
+                <span className="uppercase tracking-[0.2em] text-gray-500">
+                  Now Playing
+                </span>
               </div>
             </div>
 
-            {/* 3. Reserve-Rechts: Platz für zukünftige Aktionen (Segment-Info, Queue, Volume) */}
-            <div className="hidden lg:flex items-center justify-end w-[20%] text-xs text-gray-500 gap-3">
-              <span className="uppercase tracking-[0.2em] text-gray-500">
-                Now Playing
-              </span>
+            {/* Unterer Row: Zeit + Progress-Bar über volle Breite */}
+            <div className="w-full mt-1">
+              <div className="flex items-end justify-between font-mono font-bold px-1 tracking-wide text-xs lg:text-sm">
+                <span className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
+                  {formatTime(displayTime)}
+                </span>
+                <span className="text-gray-500">
+                  {formatTime(duration)}
+                </span>
+              </div>
+
+              <div className="relative h-1.5 w-full group cursor-pointer mt-1">
+                <div className="absolute inset-0 bg-white/10 rounded-full overflow-hidden" />
+                <div
+                  className="absolute inset-y-0 left-0 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.4)]"
+                  style={{ width: `${progressPercent}%` }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={duration}
+                  value={displayTime}
+                  onChange={handleSeekChange}
+                  onMouseDown={handleSeekStart}
+                  onMouseUp={handleSeekEnd}
+                  onTouchStart={handleSeekStart}
+                  onTouchEnd={handleSeekEnd}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+              </div>
             </div>
           </div>
         </div>
