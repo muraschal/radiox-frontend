@@ -56,7 +56,20 @@ const mapShowToShowWithSegments = (row: any): Show => {
   // 1. BASIC METADATA
   const id = row.id?.toString() || `show-${Math.random()}`;
   const title = getProperty(row, ['title', 'show_name', 'name']) || "Untitled Show";
-  const metadata = row.metadata ?? undefined;
+
+  // Ensure metadata is always a parsed object (not a raw JSON string)
+  let metadata: any = undefined;
+  if (row.metadata !== undefined && row.metadata !== null) {
+    if (typeof row.metadata === 'string') {
+      try {
+        metadata = JSON.parse(row.metadata);
+      } catch {
+        metadata = undefined;
+      }
+    } else {
+      metadata = row.metadata;
+    }
+  }
 
   // Use created_at (or date) as canonical release timestamp
   const createdAtSource = getProperty(row, ['created_at', 'date']) || new Date().toISOString();
@@ -69,7 +82,7 @@ const mapShowToShowWithSegments = (row: any): Show => {
     month: '2-digit',
     day: '2-digit',
   });
-  const coverUrl = getProperty(row, ['cover_url', 'image_url', 'thumbnail']) || "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=800&auto=format&fit=crop&q=60";
+  const coverUrl = getProperty(row, ['cover_url', 'image_url', 'thumbnail']) || '/favicon.svg';
   const audioUrl = getProperty(row, ['audio_url', 'file_url', 'url']);
   
   // HOSTS
@@ -100,9 +113,6 @@ const mapShowToShowWithSegments = (row: any): Show => {
       });
   }
 
-  // 0. PREPARE IMAGE LOOKUP MAP (From used_news/raw metadata)
-  // Structured segments often miss images, so we look them up from the raw input data
-  const articleImages: Record<string, string> = {};
   const rawNewsData = getProperty(row, ['used_news', 'news', 'chapters']);
   let parsedNewsItems: any[] = [];
   
@@ -118,17 +128,6 @@ const mapShowToShowWithSegments = (row: any): Show => {
   } else if (typeof rawNewsData === 'object' && rawNewsData !== null) {
       if (Array.isArray(rawNewsData.news)) parsedNewsItems = rawNewsData.news;
   }
-
-  // Populate map
-  parsedNewsItems.forEach(item => {
-      const img = getProperty(item, ['image_url', 'image', 'thumbnail', 'url_to_image']);
-      if (img) {
-          const id = item.id || item.content_item_id;
-          const url = getProperty(item, ['url', 'link', 'article_url']);
-          if (id) articleImages[id] = img;
-          if (url) articleImages[url] = img;
-      }
-  });
 
 
   // 2. SEGMENT & TRANSCRIPT PARSING
@@ -218,7 +217,8 @@ const mapShowToShowWithSegments = (row: any): Show => {
           let articleTitle = getProperty(seg, ['articleTitle', 'article_title', 'title', 'headline']);
           let articleDescription = getProperty(seg, ['articleDescription', 'article_description', 'summary', 'description']);
           let sourcePublishedAt = getProperty(seg, ['sourcePublishedAt', 'source_published_at', 'published_at', 'date']);
-          let articleImageUrl = getProperty(seg, ['articleImageUrl', 'article_image_url', 'image_url', 'image', 'thumbnail']);
+          let articleImageUrl = getProperty(seg, ['articleImageUrl']);
+          let articleEmoji = getProperty(seg, ['articleEmoji', 'article_emoji', 'emoji']);
 
           if (Array.isArray(seg.sources)) {
               // Flatten sources if it's an array of strings
@@ -276,22 +276,6 @@ const mapShowToShowWithSegments = (row: any): Show => {
                       sourceName = sourceName.charAt(0).toUpperCase() + sourceName.slice(1);
                   } catch (e) { sourceName = 'Source'; }
               }
-
-              // Try to find image from sources if not already on segment
-              if (!articleImageUrl) {
-                  for (const s of sources) {
-                      const id = typeof s === 'string' ? s : (s.content_item_id || s.id);
-                      if (id && articleImages[id]) {
-                          articleImageUrl = articleImages[id];
-                          break;
-                      }
-                  }
-              }
-          }
-
-          // Fallback: If no image found, check if sourceUrl matches anything in our image map
-          if (!articleImageUrl && sourceUrl && articleImages[sourceUrl]) {
-              articleImageUrl = articleImages[sourceUrl];
           }
 
           return {
@@ -306,6 +290,7 @@ const mapShowToShowWithSegments = (row: any): Show => {
               articleTitle,
               sourcePublishedAt,
               articleImageUrl: articleImageUrl, 
+              articleEmoji,
               transcript,
               audioUrl
           };
@@ -367,7 +352,8 @@ const mapShowToShowWithSegments = (row: any): Show => {
               articleDescription: getProperty(news, ['articleDescription', 'article_description', 'summary', 'description', 'content']),
               articleTitle: getProperty(news, ['articleTitle', 'article_title', 'title', 'headline']),
               sourcePublishedAt: getProperty(news, ['sourcePublishedAt', 'source_published_at', 'published_at', 'date']),
-                  articleImageUrl: getProperty(news, ['articleImageUrl', 'article_image_url', 'image_url', 'image', 'thumbnail', 'url_to_image']), 
+                  articleImageUrl: getProperty(news, ['articleImageUrl']),
+                  articleEmoji: getProperty(news, ['articleEmoji', 'article_emoji', 'emoji']),
                   audioUrl: audioUrl,
                   transcript: chapterTranscript
               };
@@ -438,7 +424,8 @@ export const api = {
     const { data, error } = await supabase
       .from('shows')
       .select('*') 
-      .or(`id.eq.${id}`)
+      // Support both primary key `id` and legacy/external `session_id` links
+      .or(`id.eq.${id},session_id.eq.${id}`)
       .single();
 
     if (error || !data) return null;

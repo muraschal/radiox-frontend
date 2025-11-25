@@ -15,6 +15,7 @@ export interface Segment {
   sourceName?: string;
   // New metadata fields for the source article
   articleImageUrl?: string;
+  articleEmoji?: string;
   articleDescription?: string;
   articleTitle?: string;
   sourcePublishedAt?: string;

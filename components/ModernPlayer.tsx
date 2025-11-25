@@ -119,41 +119,46 @@ export const ModernPlayer: React.FC<ModernPlayerProps> = ({
                 </div>
 
                 {/* Controls */}
-                <div className="flex items-center justify-center gap-8 mt-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      activeSegmentIndex > 0 && onSegmentChange(activeSegmentIndex - 1)
-                    }
-                    className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2"
-                    disabled={activeSegmentIndex === 0}
-                  >
-                    <SkipBack size={26} fill="currentColor" />
-                  </button>
+                <div className="relative flex items-center justify-center mt-1">
+                  {isPlaying && (
+                    <div className="player-wave-ambient player-wave-ambient--mobile" />
+                  )}
+                  <div className="relative z-10 flex items-center justify-center gap-8">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        activeSegmentIndex > 0 && onSegmentChange(activeSegmentIndex - 1)
+                      }
+                      className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2"
+                      disabled={activeSegmentIndex === 0}
+                    >
+                      <SkipBack size={26} fill="currentColor" />
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.25)]"
-                  >
-                    {isPlaying ? (
-                      <Pause fill="currentColor" size={30} />
-                    ) : (
-                      <Play fill="currentColor" size={30} className="ml-1" />
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPlaying(!isPlaying)}
+                      className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.25)]"
+                    >
+                      {isPlaying ? (
+                        <Pause fill="currentColor" size={30} />
+                      ) : (
+                        <Play fill="currentColor" size={30} className="ml-1" />
+                      )}
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      activeSegmentIndex < show.segments.length - 1 &&
-                      onSegmentChange(activeSegmentIndex + 1)
-                    }
-                    className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2"
-                    disabled={activeSegmentIndex === show.segments.length - 1}
-                  >
-                    <SkipForward size={26} fill="currentColor" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        activeSegmentIndex < show.segments.length - 1 &&
+                        onSegmentChange(activeSegmentIndex + 1)
+                      }
+                      className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2"
+                      disabled={activeSegmentIndex === show.segments.length - 1}
+                    >
+                      <SkipForward size={26} fill="currentColor" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Time + Progress */}
@@ -243,12 +248,12 @@ export const ModernPlayer: React.FC<ModernPlayerProps> = ({
       <div className="hidden md:block">
         <div className="bg-[#050505]/95 backdrop-blur-2xl border-t border-white/10 pb-5 pt-4 px-6 md:px-8 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
           <div className="max-w-[1920px] mx-auto flex flex-col gap-3">
-            {/* Oberer Row: Info + Controls + Right-Slot */}
-            <div className="flex items-center gap-6 md:gap-8">
+            {/* Oberer Row: Info + zentrierte Controls + Right-Slot */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 md:gap-8">
               {/* 1. Show & Host Info (CLICKABLE) */}
               <button
                 type="button"
-                className="flex items-center gap-4 w-[32%] min-w-0 justify-start cursor-pointer group/info bg-transparent border-0 text-left"
+                className="flex items-center gap-4 min-w-0 justify-start cursor-pointer group/info bg-transparent border-0 text-left"
                 onClick={onShowDetails}
                 title="Open Show Details"
               >
@@ -270,43 +275,46 @@ export const ModernPlayer: React.FC<ModernPlayerProps> = ({
                 </div>
               </button>
 
-              {/* 2. Centered Controls */}
-              <div className="flex-1 flex items-center justify-center gap-6 lg:gap-8">
-                <button
-                  onClick={() => activeSegmentIndex > 0 && onSegmentChange(activeSegmentIndex - 1)}
-                  className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2.5"
-                  disabled={activeSegmentIndex === 0}
-                  aria-label="Vorheriges Kapitel"
-                >
-                  <SkipBack size={22} fill="currentColor" />
-                </button>
+              {/* 2. Centered Controls (immer geometrisch zentriert) */}
+              <div className="relative flex items-center justify-center">
+                {isPlaying && <div className="player-wave-ambient" />}
+                <div className="relative z-10 flex items-center justify-center gap-6 lg:gap-8">
+                  <button
+                    onClick={() => activeSegmentIndex > 0 && onSegmentChange(activeSegmentIndex - 1)}
+                    className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2.5"
+                    disabled={activeSegmentIndex === 0}
+                    aria-label="Vorheriges Kapitel"
+                  >
+                    <SkipBack size={22} fill="currentColor" />
+                  </button>
 
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-14 h-14 lg:w-16 lg:h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_25px_rgba(255,255,255,0.2)]"
-                  aria-label={isPlaying ? 'Pause' : 'Abspielen'}
-                >
-                  {isPlaying ? (
-                    <Pause fill="currentColor" size={26} />
-                  ) : (
-                    <Play fill="currentColor" size={26} className="ml-1" />
-                  )}
-                </button>
+                  <button
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-14 h-14 lg:w-16 lg:h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_25px_rgba(255,255,255,0.2)]"
+                    aria-label={isPlaying ? 'Pause' : 'Abspielen'}
+                  >
+                    {isPlaying ? (
+                      <Pause fill="currentColor" size={26} />
+                    ) : (
+                      <Play fill="currentColor" size={26} className="ml-1" />
+                    )}
+                  </button>
 
-                <button
-                  onClick={() =>
-                    activeSegmentIndex < show.segments.length - 1 && onSegmentChange(activeSegmentIndex + 1)
-                  }
-                  className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2.5"
-                  disabled={activeSegmentIndex === show.segments.length - 1}
-                  aria-label="Nächstes Kapitel"
-                >
-                  <SkipForward size={22} fill="currentColor" />
-                </button>
+                  <button
+                    onClick={() =>
+                      activeSegmentIndex < show.segments.length - 1 && onSegmentChange(activeSegmentIndex + 1)
+                    }
+                    className="text-gray-400 hover:text-white transition-colors disabled:opacity-20 p-2.5"
+                    disabled={activeSegmentIndex === show.segments.length - 1}
+                    aria-label="Nächstes Kapitel"
+                  >
+                    <SkipForward size={22} fill="currentColor" />
+                  </button>
+                </div>
               </div>
 
               {/* 3. Right-Slot: „Now Playing“ oder spätere Actions */}
-              <div className="hidden lg:flex items-center justify-end w-[20%] text-xs text-gray-500 gap-3">
+              <div className="hidden lg:flex items-center justify-end text-xs text-gray-500 gap-3">
                 <span className="uppercase tracking-[0.2em] text-gray-500">
                   Now Playing
                 </span>

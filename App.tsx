@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ModernPlayer } from './components/ModernPlayer';
 import { ShowCard } from './components/ShowCard';
 import { ShowDetail } from './components/ShowDetail';
+import { PoweredBySection } from './components/PoweredBySection';
+import { WideContentCard } from './components/WideContentCard';
 import { Show, Speaker } from './types';
 import { Search, Loader2, RefreshCw, Radio, PlayCircle, Calendar, Clock, Sparkles } from 'lucide-react';
 import { api } from './services/apiService';
@@ -35,6 +37,9 @@ const App: React.FC = () => {
   // Detail View State
   const [detailShow, setDetailShow] = useState<Show | null>(null);
   const hasSyncedInitialRouteRef = useRef(false);
+
+  // Global toast for UX feedback (e.g. invalid deep links)
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Hero slider state (for the latest shows)
   const [heroIndex, setHeroIndex] = useState(0);
@@ -149,6 +154,10 @@ const App: React.FC = () => {
     setDetailShow(null);
   };
 
+  const showNotFoundToast = () => {
+    setToastMessage('Show nicht gefunden – wir haben dich zurück zum Dashboard gebracht.');
+  };
+
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -216,8 +225,9 @@ const App: React.FC = () => {
           setIsPlaying(false);
         }
       } else {
-        // Fallback: go to dashboard if show id is unknown
+        // Fallback: go to dashboard if show id/session is unknown
         openDashboardRoute();
+        showNotFoundToast();
       }
     };
 
@@ -232,6 +242,7 @@ const App: React.FC = () => {
       const route = parseShowRoute(window.location.pathname);
       if (!route) {
         openDashboardRoute();
+        showNotFoundToast();
         return;
       }
 
@@ -254,7 +265,14 @@ const App: React.FC = () => {
       if (targetShow) {
         applyShow(targetShow);
       } else {
-        api.getShowById(route.id).then((fetched) => applyShow(fetched));
+        api.getShowById(route.id).then((fetched) => {
+          if (!fetched) {
+            openDashboardRoute();
+            showNotFoundToast();
+            return;
+          }
+          applyShow(fetched);
+        });
       }
     };
 
@@ -264,6 +282,14 @@ const App: React.FC = () => {
 
   // --- HERO SLIDER AUTO-ADVANCE (TOP 3 SHOWS) ---
   const heroCount = Math.min(shows.length, 3);
+
+  // Auto-dismiss toast after a short period
+  useEffect(() => {
+    if (!toastMessage) return;
+    if (typeof window === 'undefined') return;
+    const t = window.setTimeout(() => setToastMessage(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [toastMessage]);
 
   // Keep current slide index in range when show list changes
   useEffect(() => {
@@ -504,6 +530,23 @@ const App: React.FC = () => {
 
   return (
     <div className="h-[100dvh] w-full bg-[#050505] text-white selection:bg-cyan-500/30 flex flex-col overflow-hidden">
+
+      {/* GLOBAL TOAST (e.g. for invalid deep links) */}
+      {toastMessage && (
+        <div className="fixed top-20 right-4 z-[70]">
+          <div className="bg-[#111]/95 backdrop-blur-lg border border-white/15 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.75)] px-4 py-2.5 flex items-center gap-3 text-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            <span className="text-gray-100">{toastMessage}</span>
+            <button
+              type="button"
+              onClick={() => setToastMessage(null)}
+              className="text-[11px] text-gray-400 hover:text-gray-100 font-medium uppercase tracking-widest"
+            >
+              Schliessen
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* HIDDEN AUDIO ELEMENT */}
       <audio 
@@ -674,30 +717,19 @@ const App: React.FC = () => {
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {recentShows.map((show) => (
-                          <div 
-                             key={show.id}
-                             className="bg-[#111] border border-white/5 rounded-2xl p-4 flex gap-4 hover:border-white/10 transition-all cursor-pointer group"
-                             onClick={() => handleCardClick(show)}
-                          >
-                             <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden shrink-0 relative">
-                                <img src={show.coverUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                                <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                   {show.date}
-                                </div>
-                             </div>
-                             <div className="flex flex-col justify-center min-w-0">
-                                <h4 className="text-lg font-bold text-white leading-tight mb-1 truncate group-hover:text-cyan-300 transition-colors">{show.title}</h4>
-                                <p className="text-sm text-cyan-500 font-medium mb-2">{show.hosts}</p>
-                                <p className="text-xs text-gray-500 line-clamp-2">{show.description}</p>
-                                <button 
-                                   onClick={(e) => { e.stopPropagation(); handlePlayShow(show); }}
-                                   className="mt-3 flex items-center gap-2 text-xs font-bold text-white bg-white/10 w-fit px-3 py-1.5 rounded-full hover:bg-white/20 transition-colors"
-                                >
-                                   <PlayCircle size={14} /> Play Episode
-                                </button>
-                             </div>
-                          </div>
+                          <WideContentCard
+                            key={show.id}
+                            imageUrl={show.coverUrl}
+                            imageAlt={show.title}
+                            dateLabel={show.date}
+                            title={show.title}
+                            eyebrow={show.hosts}
+                            description={show.description}
+                            isActive={currentShow?.id === show.id}
+                            onCardClick={() => handleCardClick(show)}
+                            primaryActionLabel="Play Episode"
+                            onPrimaryActionClick={() => handlePlayShow(show)}
+                          />
                         ))}
                      </div>
                   </div>
@@ -818,11 +850,17 @@ const App: React.FC = () => {
                      )}
                   </div>
                 )}
+
+                {/* --- 4. POWERED BY (Tech Stack Logos) --- */}
+                <PoweredBySection />
               </>
             ) : (
-                <div className="flex flex-col items-center justify-center py-40 text-gray-500">
-                    <p>No shows found currently.</p>
-                </div>
+                <>
+                  <div className="flex flex-col items-center justify-center py-40 text-gray-500">
+                      <p>No shows found currently.</p>
+                  </div>
+                  <PoweredBySection />
+                </>
             )}
           </div>
         )}

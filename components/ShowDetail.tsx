@@ -1,17 +1,35 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, Play, Share2, Heart, ListMusic, BarChart3, ExternalLink, Info, Maximize2, X, FileText, Newspaper, MessageSquare, Users, Link2, Clock } from 'lucide-react';
+import { ArrowLeft, Play, Share2, Heart, ListMusic, BarChart3, ExternalLink, Info, Maximize2, X, FileText, Newspaper, MessageSquare, Users, Link2, Clock, Clipboard } from 'lucide-react';
 import { Show, Speaker } from '../types';
 import { MatrixBackground } from './MatrixBackground';
 import { SpeakerBlobs } from './SpeakerBlobs';
+import { WideContentCard } from './WideContentCard';
 
-// Helper: akzeptiere nur Supabase-Proxy-Bilder aus dem Bucket "article-covers"
+// Helper: akzeptiere sichere Artikelbilder:
+// - Supabase-Proxy-Bilder aus dem Bucket "article-covers"
+// - aktuell noch direkt von image.20min.ch (bis alle Artikel über den Proxy laufen)
 const isSafeSupabaseArticleImage = (url: string | undefined | null): boolean => {
   if (!url) return false;
   try {
     const parsed = new URL(url);
-    if (!parsed.hostname.endsWith('supabase.co')) return false;
-    return parsed.pathname.includes('/storage/v1/object/public/article-covers/');
+    if (parsed.protocol !== 'https:') return false;
+
+    // 1) Immer erlauben: unser Supabase-Proxy-Bucket
+    if (
+      parsed.hostname.endsWith('supabase.co') &&
+      parsed.pathname.includes('/storage/v1/object/public/article-covers/')
+    ) {
+      return true;
+    }
+
+    // 2) Übergangsweise erlauben: aktueller 20min-CDN-Host,
+    //    bis die Backend-Pipeline alle Artikelbilder in den Proxy-Bucket schreibt.
+    if (parsed.hostname === 'image.20min.ch') {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
@@ -36,6 +54,7 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
   
   const [displayedSegmentIndex, setDisplayedSegmentIndex] = useState(activeIndex !== -1 ? activeIndex : 0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isPromptCopied, setIsPromptCopied] = useState(false);
 
   // Release time information (for header)
   const createdAtDate = show.createdAt ? new Date(show.createdAt) : null;
@@ -77,6 +96,12 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
   const aiCoverSettings: any = show.metadata?.media_settings?.image;
   const aiCoverProvider = aiCoverMeta?.provider || aiCoverSettings?.provider;
   const aiCoverModel = aiCoverMeta?.model || aiCoverSettings?.model;
+  const aiCoverPrompt: string | undefined =
+    (typeof aiCoverMeta?.prompt === 'string' && aiCoverMeta.prompt.trim().length > 0
+      ? aiCoverMeta.prompt
+      : typeof aiCoverSettings?.prompt === 'string'
+      ? aiCoverSettings.prompt
+      : undefined);
   const hasAICoverMeta = !!(aiCoverProvider || aiCoverModel);
 
   const aiCoverLabel = hasAICoverMeta
@@ -298,6 +323,40 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                         {aiCoverLabel}
                       </p>
                     )}
+                    {aiCoverPrompt && (
+                      <div className="mt-1 text-[10px] text-gray-500">
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const text = aiCoverPrompt.trim();
+                            try {
+                              if (navigator.clipboard && navigator.clipboard.writeText) {
+                                await navigator.clipboard.writeText(text);
+                              } else {
+                                const textarea = document.createElement('textarea');
+                                textarea.value = text;
+                                textarea.style.position = 'fixed';
+                                textarea.style.left = '-9999px';
+                                document.body.appendChild(textarea);
+                                textarea.focus();
+                                textarea.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(textarea);
+                              }
+                              setIsPromptCopied(true);
+                              window.setTimeout(() => setIsPromptCopied(false), 2000);
+                            } catch {
+                              // ignore copy errors silently
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-white/15 text-[9px] uppercase tracking-widest text-gray-300 hover:text-white hover:border-white/40 bg-black/40"
+                        >
+                          <Clipboard size={11} />
+                          <span>{isPromptCopied ? 'Image Prompt kopiert' : 'Copy Image Prompt'}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -419,7 +478,7 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
                 {/* SHOW SCRIPT VIEW (Teleprompter-style) */}
                 <div className="flex-1 px-4 lg:px-10 flex items-center justify-center">
                     {transcript.length > 0 ? (
-                        <div className="w-full max-w-4xl h-[180px] md:h-[210px] lg:h-[240px] flex items-center justify-center">
+                        <div className="w-full max-w-4xl h-[220px] md:h-[260px] lg:h-[300px] flex items-center justify-center">
                             <div className="w-full flex flex-col items-stretch justify-center gap-2.5 lg:gap-3">
                               {visibleLineIndices.map((lineIndex) => {
                               const line = transcript[lineIndex];
@@ -579,14 +638,14 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
 
       </div>
 
-      {/* TOPICS & NEWS – volle Breite unterhalb von Cover & Transcript */}
+      {/* TOPICS – volle Breite unterhalb von Cover & Transcript */}
       <div className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 pb-16">
         <div className="flex flex-col min-h-0 bg-black/20 border border-white/5 rounded-3xl overflow-hidden shadow-none">
           <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#0A0A0A] z-10 shrink-0">
             <div className="flex items-center gap-2">
               <ListMusic size={16} className="text-cyan-500" />
               <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">
-                Topics & News
+                TOPICS
               </span>
             </div>
             <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-400">
@@ -594,188 +653,233 @@ export const ShowDetail: React.FC<ShowDetailProps> = ({ show, activeSegmentId, o
             </span>
           </div>
 
-          <div className="flex-1 p-3 sm:p-4 md:p-5 overflow-x-auto lg:overflow-x-visible no-scrollbar">
-            <div
-              className="
-                flex lg:grid
-                gap-3 sm:gap-3.5 md:gap-4
-                min-w-full lg:min-w-0
-                lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
-                lg:auto-rows-[minmax(0,1fr)]
-              "
-            >
-            {show.segments.map((segment, idx) => {
-              const isSelected = idx === safeIndex;
-              const isActivePlaying = activeSegmentId === segment.id;
-              const hasLink = segment.sourceUrl && segment.sourceUrl.length > 0;
-              // Bild-Priorität:
-              // 1) articleImageUrl aus Backend (ideal, serverseitig vorbereitet)
-              // 2) Twitter/X-Avatar, falls es ein Tweet-Link ist
-              // 3) sonst kein Bild
-              let previewImage: string | undefined = segment.articleImageUrl;
+          <div className="flex-1 p-3 sm:p-4 md:p-5 overflow-x-visible no-scrollbar">
+            {/* Mobile: nur die aktuell ausgewählte Topic-Karte */}
+            <div className="block lg:hidden">
+              {show.segments.map((segment, idx) => {
+                if (idx !== safeIndex) return null;
 
-              // Safety: Nur Supabase-Proxy-Imgs aus dem Bucket "article-covers" zulassen.
-              // Alte Shows können noch direkte OG-URLs (Unsplash, Publisher-CDNs) enthalten.
-              if (previewImage && !isSafeSupabaseArticleImage(previewImage)) {
-                previewImage = undefined;
-              }
+                const isActivePlaying = activeSegmentId === segment.id;
+                const hasLink = segment.sourceUrl && segment.sourceUrl.length > 0;
 
-              if (!previewImage && segment.sourceUrl) {
-                try {
-                  const parsed = new URL(segment.sourceUrl);
-                  const hostname = parsed.hostname.toLowerCase();
-                  const pathParts = parsed.pathname.split('/').filter(Boolean);
-                  const username = pathParts[0] || '';
+                // Bild / Emoji Priorität:
+                // 1) articleImageUrl aus Backend (Supabase, CSP-safe oder 20min-CDN)
+                // 2) Emoji-Fallback aus Backend (articleEmoji)
+                let previewImage: string | undefined = segment.articleImageUrl;
 
-                  if (
-                    username &&
-                    (hostname.includes('twitter.com') || hostname.includes('x.com'))
-                  ) {
-                    previewImage = `https://unavatar.io/twitter/${username}`;
-                  }
-                } catch {
-                  // ignore invalid URLs
+                if (previewImage && !isSafeSupabaseArticleImage(previewImage)) {
+                  previewImage = undefined;
                 }
-              }
-              const hasThumbnail = !!previewImage;
 
-              const isIntroSegment = idx === 0 && !hasLink;
-              const isOutroSegment =
-                idx === show.segments.length - 1 && !hasLink && show.segments.length > 1;
-              const isMetaSegment = isIntroSegment || isOutroSegment;
+                const articleEmoji = segment.articleEmoji || '📰';
+
+                const isIntroSegment = idx === 0 && !hasLink;
+                const isOutroSegment =
+                  idx === show.segments.length - 1 && !hasLink && show.segments.length > 1;
+                const isMetaSegment = isIntroSegment || isOutroSegment;
+
+                // Intro / Outro nicht als Topic-Card anzeigen
+                if (isMetaSegment) return null;
 
               const publishedAt = segment.sourcePublishedAt
                 ? new Date(segment.sourcePublishedAt)
                 : null;
-              const publishedDateTimeLabel =
+              const publishedTimeLabel =
                 publishedAt && !isNaN(publishedAt.getTime())
-                  ? `${publishedAt.toLocaleDateString(undefined, {
+                  ? publishedAt.toLocaleTimeString(undefined, {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : null;
+              const publishedDateLabel =
+                publishedAt && !isNaN(publishedAt.getTime())
+                  ? publishedAt.toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: '2-digit',
                       day: '2-digit',
-                    })} · ${publishedAt.toLocaleTimeString(undefined, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}`
+                    })
                   : null;
+              const publishedFullLabel =
+                publishedDateLabel && publishedTimeLabel
+                  ? `${publishedDateLabel} · ${publishedTimeLabel}`
+                  : publishedDateLabel || publishedTimeLabel;
 
-              return (
-                <div
-                  key={segment.id}
-                  onClick={() => {
-                    setDisplayedSegmentIndex(idx);
-                    if (segment.id !== activeSegmentId) {
-                      const audioEl = document.querySelector('audio');
-                      if (audioEl && segment.startTime !== undefined) {
-                        audioEl.currentTime = segment.startTime;
-                      }
-                      onPlay(idx);
+                return (
+                  <WideContentCard
+                    key={segment.id}
+                    imageUrl={previewImage}
+                    emojiFallback={articleEmoji}
+                    dateLabel={undefined}
+                    title={
+                      isIntroSegment
+                        ? 'Intro'
+                        : isOutroSegment
+                        ? 'Outro'
+                        : segment.articleTitle || segment.title || 'Topic'
                     }
-                  }}
-                  className={`
-                    w-full max-w-[260px] sm:max-w-[280px] lg:max-w-none
-                    group relative flex flex-col justify-between px-3 py-3.5 rounded-2xl cursor-pointer transition-all border overflow-hidden
-                    aspect-[21/9] lg:aspect-auto shrink-0 lg:shrink
-                    ${isSelected ? 'bg-white/10 border-white/20' : 'bg-[#111]/60 border-white/5 hover:bg-white/5'}
-                  `}
-                >
-                  {/* Header: Source Badge & Time */}
-                  <div className="flex items-center justify-between mb-1 md:mb-2">
-                    <div
-                      className="flex items-center gap-2 group/badge"
-                      onClick={(e) => hasLink && handleOpenLink(e, segment.sourceUrl)}
-                    >
-                      <div
-                        className={`p-1 rounded bg-white/5 ${
-                          isActivePlaying ? 'text-cyan-400' : 'text-gray-500'
-                        }`}
-                      >
-                        {isActivePlaying ? (
-                          <BarChart3 size={12} className="animate-pulse" />
-                        ) : (
-                          <Newspaper size={12} />
+                    // Nur noch Kategorie als Eyebrow (Quelle steht oben in den Metadaten)
+                    eyebrow={segment.category || undefined}
+                    description={segment.articleDescription}
+                    isActive={isActivePlaying}
+                    metaTopLeft={
+                      <>
+                        {segment.sourceName && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mr-2">
+                            {segment.sourceName}
+                          </span>
                         )}
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider truncate max-w-[180px] ${
-                          hasLink
-                            ? 'text-cyan-200 group-hover/badge:text-cyan-400 group-hover/badge:underline decoration-cyan-500/50'
-                            : 'text-gray-400'
-                        }`}
-                      >
-                        {isIntroSegment
-                          ? 'Intro'
-                          : isOutroSegment
-                          ? 'Outro'
-                          : segment.sourceName || 'Topic'}
-                      </span>
-                      {hasLink && (
-                        <ExternalLink
-                          size={10}
-                          className="text-gray-600 group-hover/badge:text-cyan-400"
-                        />
-                      )}
-                      {publishedDateTimeLabel && (
-                        <span className="text-[10px] text-gray-500 ml-2">{publishedDateTimeLabel}</span>
-                      )}
-                    </div>
-                    {segment.category && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-900/30 text-cyan-400 border border-cyan-500/20 uppercase">
-                        {segment.category}
-                      </span>
-                    )}
-                  </div>
+                        {publishedFullLabel && (
+                          <span className="text-[10px] text-gray-500">
+                            {publishedFullLabel}
+                          </span>
+                        )}
+                      </>
+                    }
+                    metaTopRight={undefined}
+                    overlayTag={
+                      segment.category ? (
+                        <span>
+                          {segment.category}
+                        </span>
+                      ) : undefined
+                    }
+                    onCardClick={() => {
+                      setDisplayedSegmentIndex(idx);
+                      if (segment.id !== activeSegmentId) {
+                        const audioEl = document.querySelector('audio');
+                        if (audioEl && segment.startTime !== undefined) {
+                          audioEl.currentTime = segment.startTime;
+                        }
+                        onPlay(idx);
+                      }
+                    }}
+                    primaryActionLabel={hasLink ? 'Read Article' : undefined}
+                    onPrimaryActionClick={
+                      hasLink
+                        ? (e) => {
+                            handleOpenLink(e as any, segment.sourceUrl);
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
 
-                  {/* CONTENT BODY: Title + Summary + Thumb */}
-                  <div className="flex flex-1 gap-3 md:gap-4 items-stretch">
-                    <div className="flex-1 min-w-0">
-                      <button
-                        type="button"
-                        disabled={!hasLink}
-                        onClick={(e) => hasLink && handleOpenLink(e as any, segment.sourceUrl)}
-                        className={`text-left w-full ${
-                          isMetaSegment ? 'text-[11px]' : 'text-[13px] md:text-sm'
-                        } font-bold leading-snug mb-1 transition-colors ${
-                          hasLink
-                            ? isActivePlaying
-                              ? 'text-cyan-50 hover:text-cyan-300'
-                              : 'text-gray-200 group-hover:text-white hover:text-cyan-200'
-                            : isActivePlaying
-                            ? 'text-cyan-50'
-                            : 'text-gray-200'
-                        }`}
-                      >
-                        {isIntroSegment
-                          ? 'Intro'
-                          : isOutroSegment
-                          ? 'Outro'
-                          : segment.articleTitle || segment.title}
-                      </button>
+            {/* Desktop/Tablet: Topics im Grid – bis zu 4 Karten pro Zeile */}
+            <div
+              className="
+                hidden lg:grid
+                gap-3 sm:gap-3.5 md:gap-4
+                lg:grid-cols-3
+                xl:grid-cols-4
+              "
+            >
+              {show.segments.map((segment, idx) => {
+                const isActivePlaying = activeSegmentId === segment.id;
+                const hasLink = segment.sourceUrl && segment.sourceUrl.length > 0;
+                // Bild / Emoji Priorität:
+                // 1) articleImageUrl aus Backend (Supabase, CSP-safe oder 20min-CDN)
+                // 2) Emoji-Fallback aus Backend (articleEmoji)
+                let previewImage: string | undefined = segment.articleImageUrl;
 
-                      {segment.articleDescription && segment.articleDescription.length > 0 && (
-                        <p
-                          className={`text-xs text-gray-500 leading-relaxed ${
-                            isMetaSegment ? 'opacity-70' : ''
-                          } line-clamp-3`}
-                        >
-                          {segment.articleDescription}
-                        </p>
-                      )}
-                    </div>
+                if (previewImage && !isSafeSupabaseArticleImage(previewImage)) {
+                  previewImage = undefined;
+                }
 
-                    {hasThumbnail && (
-                      <div className="shrink-0 w-20 md:w-24 rounded-lg overflow-hidden bg-white/5 border border-white/10 mt-1">
-                        <img
-                          src={previewImage}
-                          alt="Article"
-                          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                const articleEmoji = segment.articleEmoji || '📰';
+
+                const isIntroSegment = idx === 0 && !hasLink;
+                const isOutroSegment =
+                  idx === show.segments.length - 1 && !hasLink && show.segments.length > 1;
+                const isMetaSegment = isIntroSegment || isOutroSegment;
+
+                // Intro / Outro nicht als Topic-Card anzeigen
+                if (isMetaSegment) return null;
+
+                const publishedAt = segment.sourcePublishedAt
+                  ? new Date(segment.sourcePublishedAt)
+                  : null;
+                const publishedTimeLabel =
+                  publishedAt && !isNaN(publishedAt.getTime())
+                    ? publishedAt.toLocaleTimeString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : null;
+                const publishedDateLabel =
+                  publishedAt && !isNaN(publishedAt.getTime())
+                    ? publishedAt.toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      })
+                    : null;
+                const publishedFullLabel =
+                  publishedDateLabel && publishedTimeLabel
+                    ? `${publishedDateLabel} · ${publishedTimeLabel}`
+                    : publishedDateLabel || publishedTimeLabel;
+
+                return (
+                  <WideContentCard
+                    key={segment.id}
+                    imageUrl={previewImage}
+                    emojiFallback={articleEmoji}
+                    dateLabel={undefined}
+                    title={
+                      isIntroSegment
+                        ? 'Intro'
+                        : isOutroSegment
+                        ? 'Outro'
+                        : segment.articleTitle || segment.title || 'Topic'
+                    }
+                    // Nur noch Kategorie als Eyebrow (Quelle steht oben in den Metadaten)
+                    eyebrow={segment.category || undefined}
+                    description={segment.articleDescription}
+                    isActive={isActivePlaying}
+                    metaTopLeft={
+                      <>
+                        {segment.sourceName && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mr-2">
+                            {segment.sourceName}
+                          </span>
+                        )}
+                        {publishedFullLabel && (
+                          <span className="text-[10px] text-gray-500">
+                            {publishedFullLabel}
+                          </span>
+                        )}
+                      </>
+                    }
+                    metaTopRight={undefined}
+                    overlayTag={
+                      segment.category ? (
+                        <span>
+                          {segment.category}
+                        </span>
+                      ) : undefined
+                    }
+                    onCardClick={() => {
+                      setDisplayedSegmentIndex(idx);
+                      if (segment.id !== activeSegmentId) {
+                        const audioEl = document.querySelector('audio');
+                        if (audioEl && segment.startTime !== undefined) {
+                          audioEl.currentTime = segment.startTime;
+                        }
+                        onPlay(idx);
+                      }
+                    }}
+                    primaryActionLabel={hasLink ? 'Read Article' : undefined}
+                    onPrimaryActionClick={
+                      hasLink
+                        ? (e) => {
+                            handleOpenLink(e as any, segment.sourceUrl);
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
