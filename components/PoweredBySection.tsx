@@ -2,134 +2,183 @@ import React from 'react';
 
 const services: {
   name: string;
-  type: 'logo' | 'mono';
+  // Local SVG/PNG path (e.g. '/icons/openai.svg') or null for pure text fallback
   src?: string;
   href?: string;
   alt?: string;
   imgClassName?: string;
 }[] = [
-  // AI & dev
+  // --- Frontend Stack ---
+  {
+    name: 'React',
+    src: '/icons/react.svg',
+    href: 'https://react.dev',
+    alt: 'React',
+  },
+  {
+    name: 'Vite',
+    src: '/icons/vite.svg',
+    href: 'https://vitejs.dev',
+    alt: 'Vite',
+  },
+  {
+    name: 'TypeScript',
+    src: '/icons/typescript.svg',
+    href: 'https://www.typescriptlang.org',
+    alt: 'TypeScript',
+  },
+  {
+    name: 'Tailwind CSS',
+    src: '/icons/tailwindcss.svg',
+    href: 'https://tailwindcss.com',
+    alt: 'Tailwind CSS',
+  },
+
+  // --- Backend Core ---
+  {
+    name: 'Python',
+    src: '/icons/python.svg',
+    href: 'https://www.python.org',
+    alt: 'Python',
+  },
+  {
+    name: 'FastAPI',
+    src: '/icons/fastapi.svg',
+    href: 'https://fastapi.tiangolo.com',
+    alt: 'FastAPI',
+  },
+  {
+    name: 'FFmpeg',
+    src: '/icons/ffmpeg.svg',
+    href: 'https://ffmpeg.org',
+    alt: 'FFmpeg',
+  },
+
+  // --- AI & Content ---
   {
     name: 'OpenAI GPT',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/openai/ffffff',
+    src: '/icons/openai.svg',
     href: 'https://openai.com',
-    alt: 'OpenAI GPT logo – generative AI used for RadioX automation and content understanding',
+    alt: 'OpenAI GPT',
   },
   {
     name: 'Google Gemini',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/googlegemini/ffffff',
-    href: 'https://ai.google.dev/gemini-api',
-    alt: 'Google Gemini logo – multimodal AI model powering RadioX features',
+    src: '/icons/googlegemini.svg',
+    href: 'https://ai.google.dev',
+    alt: 'Google Gemini',
   },
   {
     name: 'ElevenLabs',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/elevenlabs/ffffff',
+    src: '/icons/elevenlabs.svg',
     href: 'https://elevenlabs.io',
-    alt: 'ElevenLabs logo – speech and voice synthesis for RadioX',
+    alt: 'ElevenLabs',
   },
   {
-    name: 'Cursor',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/cursor/ffffff',
-    href: 'https://www.cursor.com',
-    alt: 'Cursor logo – AI coding environment used to build RadioX',
+    name: 'Jina AI',
+    src: '/icons/jina.png', // local PNG fallback
+    href: 'https://jina.ai',
+    alt: 'Jina AI Reader',
+    imgClassName: 'rounded-sm', // Jina avatar is square
   },
-  {
-    name: 'JIA AI Reader',
-    type: 'mono',
-    alt: 'JIA AI Reader – custom AI-powered article reader for RadioX',
-  },
-  // Data & APIs
+
+  // --- Data & APIs ---
   {
     name: 'CoinMarketCap',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/coinmarketcap/ffffff',
+    src: '/icons/coinmarketcap.svg',
     href: 'https://coinmarketcap.com',
-    alt: 'CoinMarketCap logo – cryptocurrency market data for RadioX shows',
+    alt: 'CoinMarketCap',
   },
   {
     name: 'OpenWeather',
-    type: 'logo',
-    // Official GitHub avatar, normalized to white via CSS filters
-    src: 'https://avatars.githubusercontent.com/u/1743227?s=200&v=4',
+    src: '/icons/openweathermap.png', // local PNG fallback
     href: 'https://openweathermap.org',
-    alt: 'OpenWeather logo – weather and climate data used by RadioX',
-    imgClassName: 'filter grayscale invert brightness-200',
+    alt: 'OpenWeather',
+    // Invert the dark Github avatar to look good on dark background
+    imgClassName: 'filter invert', 
   },
   {
-    name: 'X (Twitter) API',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/x/ffffff',
+    name: 'X (Twitter)',
+    src: '/icons/x.svg',
     href: 'https://developer.x.com',
-    alt: 'X (Twitter) logo – social media content and news signals for RadioX',
+    alt: 'X (Twitter)',
   },
   {
     name: 'Telegram',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/telegram/ffffff',
+    src: '/icons/telegram.svg',
     href: 'https://telegram.org',
-    alt: 'Telegram logo – messaging integrations for RadioX news sources',
+    alt: 'Telegram',
   },
-  // Runtime & infra
+
+  // --- Infra & Tools ---
   {
     name: 'Supabase',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/supabase/ffffff',
+    src: '/icons/supabase.svg',
     href: 'https://supabase.com',
-    alt: 'Supabase logo – Postgres database and authentication for RadioX',
+    alt: 'Supabase',
   },
   {
     name: 'Redis',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/redis/ffffff',
+    src: '/icons/redis.svg',
     href: 'https://redis.io',
-    alt: 'Redis logo – high performance caching layer for RadioX',
+    alt: 'Redis',
   },
   {
     name: 'Vercel',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/vercel/ffffff',
+    src: '/icons/vercel.svg',
     href: 'https://vercel.com',
-    alt: 'Vercel logo – edge hosting platform for the RadioX frontend',
+    alt: 'Vercel',
   },
   {
     name: 'Cloudflare',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/cloudflare/ffffff',
+    src: '/icons/cloudflare.svg',
     href: 'https://www.cloudflare.com',
-    alt: 'Cloudflare logo – CDN and security layer in front of RadioX',
+    alt: 'Cloudflare',
   },
   {
     name: 'Docker',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/docker/ffffff',
+    src: '/icons/docker.svg',
     href: 'https://www.docker.com',
-    alt: 'Docker logo – containerization platform for RadioX services',
+    alt: 'Docker',
+  },
+  {
+    name: 'GitHub Actions',
+    src: '/icons/githubactions.svg',
+    href: 'https://github.com/features/actions',
+    alt: 'GitHub Actions',
+  },
+  {
+    name: 'Tailscale',
+    src: '/icons/tailscale.svg',
+    href: 'https://tailscale.com',
+    alt: 'Tailscale',
   },
   {
     name: 'Proxmox',
-    type: 'logo',
-    src: 'https://cdn.simpleicons.org/proxmox/ffffff',
+    src: '/icons/proxmox.svg',
     href: 'https://www.proxmox.com',
-    alt: 'Proxmox logo – virtualization platform for RadioX infrastructure',
+    alt: 'Proxmox',
+  },
+  {
+    name: 'Cursor',
+    src: '/icons/cursor.svg',
+    href: 'https://www.cursor.com',
+    alt: 'Cursor',
   },
 ];
 
 export const PoweredBySection: React.FC = () => {
   return (
-    <section className="mt-16 px-6 md:px-12 pb-8 text-gray-500">
+    <section className="mt-16 px-6 md:px-12 pb-12 text-gray-500">
       <div className="max-w-[1920px] mx-auto border-t border-white/10 pt-8">
-        <p className="text-xs uppercase tracking-[0.25em] text-gray-500 mb-4">
+        <p className="text-xs uppercase tracking-[0.25em] text-gray-500 mb-8 text-center">
           Powered by
         </p>
-        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 md:gap-8">
+        
+        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 md:gap-10">
           {services.map((service) => (
             <div
               key={service.name}
-              className="flex flex-col items-center justify-center gap-2 min-w-[72px]"
+              className="flex flex-col items-center justify-center gap-3 min-w-[80px] group"
             >
               {service.href ? (
                 <a
@@ -137,34 +186,47 @@ export const PoweredBySection: React.FC = () => {
                   target="_blank"
                   rel="noreferrer noopener"
                   aria-label={service.alt || service.name}
-                  className="inline-flex items-center justify-center"
+                  className="
+                    flex items-center justify-center w-12 h-12 p-2.5 
+                    bg-white/5 border border-white/5 rounded-2xl 
+                    group-hover:bg-white/10 group-hover:border-white/20 group-hover:scale-110 
+                    transition-all duration-300 shadow-lg shadow-black/20
+                  "
                 >
-                  {service.type === 'logo' && service.src ? (
+                  {service.src ? (
                     <img
                       src={service.src}
-                      alt={service.alt || `${service.name} logo`}
-                      className={`h-6 w-auto opacity-80 hover:opacity-100 transition-opacity ${service.imgClassName ?? ''}`}
+                      alt={service.alt || service.name}
+                      className={`w-full h-full object-contain opacity-70 group-hover:opacity-100 transition-opacity ${service.imgClassName ?? ''}`}
                       loading="lazy"
                     />
                   ) : (
-                    <div className="h-8 w-8 rounded-lg border border-white/20 bg-white/5 flex items-center justify-center text-[10px] font-bold tracking-[0.12em] text-gray-900">
-                      JIA
-                    </div>
+                    <span className="text-[10px] font-bold text-gray-400 group-hover:text-white">
+                      {service.name.substring(0, 2).toUpperCase()}
+                    </span>
                   )}
                 </a>
-              ) : service.type === 'logo' && service.src ? (
-                <img
-                  src={service.src}
-                  alt={service.alt || `${service.name} logo`}
-                  className={`h-6 w-auto opacity-80 hover:opacity-100 transition-opacity ${service.imgClassName ?? ''}`}
-                  loading="lazy"
-                />
               ) : (
-                    <div className="h-8 w-8 rounded-lg border border-white/40 bg-transparent flex items-center justify-center text-[11px] font-extrabold tracking-[0.16em] text-white">
-                  JIA
+                <div className="
+                    flex items-center justify-center w-12 h-12 p-2.5 
+                    bg-white/5 border border-white/5 rounded-2xl cursor-default
+                ">
+                   {service.src ? (
+                    <img
+                      src={service.src}
+                      alt={service.alt || service.name}
+                      className={`w-full h-full object-contain opacity-50 ${service.imgClassName ?? ''}`}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-[10px] font-bold text-gray-500">
+                      {service.name.substring(0, 2).toUpperCase()}
+                    </span>
+                  )}
                 </div>
               )}
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-300">
+              
+              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-600 group-hover:text-gray-300 transition-colors text-center max-w-[100px]">
                 {service.name}
               </span>
             </div>
@@ -174,5 +236,3 @@ export const PoweredBySection: React.FC = () => {
     </section>
   );
 };
-
-

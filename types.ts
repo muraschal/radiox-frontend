@@ -53,6 +53,7 @@ export interface ShowMetadata {
 
 export interface Show {
   id: string;
+  slug: string;
   title: string;
   hosts: string;
   /**

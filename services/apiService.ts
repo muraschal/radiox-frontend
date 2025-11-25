@@ -55,6 +55,7 @@ const getProperty = (obj: any, keys: string[]): any => {
 const mapShowToShowWithSegments = (row: any): Show => {
   // 1. BASIC METADATA
   const id = row.id?.toString() || `show-${Math.random()}`;
+  const slug = row.slug || id;
   const title = getProperty(row, ['title', 'show_name', 'name']) || "Untitled Show";
 
   // Ensure metadata is always a parsed object (not a raw JSON string)
@@ -384,6 +385,7 @@ const mapShowToShowWithSegments = (row: any): Show => {
 
   return {
     id,
+    slug,
     title,
     hosts,
     date,
@@ -418,6 +420,18 @@ export const api = {
     }
 
     return (shows || []).map(row => mapShowToShowWithSegments(row));
+  },
+
+  async getShowBySlug(slug: string): Promise<Show | null> {
+    const { data, error } = await supabase
+      .from('shows')
+      .select('*') 
+      .eq('slug', slug)
+      .single();
+
+    if (error || !data) return null;
+
+    return mapShowToShowWithSegments(data);
   },
 
   async getShowById(id: string): Promise<Show | null> {

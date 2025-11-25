@@ -75,61 +75,19 @@ const App: React.FC = () => {
   };
 
   // --- SEO-FRIENDLY URL HELPERS ---
-  const createShowSlug = (show: Show) => {
-    /**
-     * Neues, kompaktes Schema:
-     *
-     *   <titel-slug>-<YYMMDDHHMMSS>
-     *
-     * Beispiel:
-     *   Titel: "ZVV Medienspiegel Morning"
-     *   createdAt: 2025-11-25T07:30:27Z (o. ä.)
-     *   -> "zvv-medienspiegel-morning-201125073027"
-     */
-
-    // 1) Titel in einen sauberen Slug verwandeln
-    const titleBase = (show.title || 'show')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Akzente entfernen
-
-    const titleSlug = titleBase
-      .replace(/[^a-z0-9]+/g, '-') // Nicht-Alphanumerisches -> "-"
-      .replace(/^-+|-+$/g, ''); // führende/trailing "-" entfernen
-
-    // 2) Zeitstempel aus createdAt im Format YYMMDDHHMMSS
-    let ts = '000000000000';
-    if (show.createdAt) {
-      const created = new Date(show.createdAt);
-      if (!isNaN(created.getTime())) {
-        const yy = String(created.getFullYear()).slice(-2);
-        const mm = String(created.getMonth() + 1).padStart(2, '0');
-        const dd = String(created.getDate()).padStart(2, '0');
-        const hh = String(created.getHours()).padStart(2, '0');
-        const min = String(created.getMinutes()).padStart(2, '0');
-        const ss = String(created.getSeconds()).padStart(2, '0');
-        ts = `${yy}${mm}${dd}${hh}${min}${ss}`;
-      }
-    }
-
-    return `${titleSlug}-${ts}`;
-  };
-
   const parseShowRoute = (path: string) => {
-    // Expected pattern: /shows/:slug/:id
+    // Expected pattern: /shows/:slug
     const parts = path.split('/').filter(Boolean);
-    if (parts.length >= 3 && parts[0] === 'shows') {
+    if (parts.length >= 2 && parts[0] === 'shows') {
       return {
         slug: parts[1],
-        id: parts[2],
       };
     }
     return null;
   };
 
   const openShowDetailRoute = (show: Show) => {
-    const slug = createShowSlug(show);
-    const targetPath = `/shows/${slug}/${show.id}`;
+    const targetPath = `/shows/${show.slug}`;
 
     if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
@@ -206,10 +164,10 @@ const App: React.FC = () => {
     }
 
     const sync = async () => {
-      let targetShow = shows.find((s) => s.id === route.id) || null;
+      let targetShow = shows.find((s) => s.slug === route.slug) || null;
       if (!targetShow) {
         try {
-          const fetched = await api.getShowById(route.id);
+          const fetched = await api.getShowBySlug(route.slug);
           targetShow = fetched;
         } catch {
           targetShow = null;
@@ -246,7 +204,7 @@ const App: React.FC = () => {
         return;
       }
 
-      let targetShow = shows.find((s) => s.id === route.id) || null;
+      let targetShow = shows.find((s) => s.slug === route.slug) || null;
 
       const applyShow = (show: Show | null) => {
         if (!show) {
@@ -265,7 +223,7 @@ const App: React.FC = () => {
       if (targetShow) {
         applyShow(targetShow);
       } else {
-        api.getShowById(route.id).then((fetched) => {
+        api.getShowBySlug(route.slug).then((fetched) => {
           if (!fetched) {
             openDashboardRoute();
             showNotFoundToast();
